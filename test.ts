@@ -13,4 +13,4 @@ for (var p of testPaths) {
 
 D.fillVertexGaps()
 
-console.log(JSON.stringify(D))
+console.log(D.toSimpleGraph())

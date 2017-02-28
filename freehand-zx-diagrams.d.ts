@@ -2,9 +2,6 @@ export declare class uID {
     constructor();
     id: string;
 }
-export declare var idLookup: {
-    [id: string]: any;
-};
 export declare class DiagramOptions {
     interpolationDistance: number;
     closingEdgeLoopDistance: number;
@@ -53,7 +50,7 @@ export declare class Diagram extends TypedId {
     edges: Edge[];
     vertices: Vertex[];
     inferredVertices: Vertex[];
-    vertexGaps: VertexGap[];
+    unpluggedVertexGaps: VertexGap[];
     paths: DrawnObject[];
     pathDictionary: {
         [path: string]: (Edge | Vertex);
@@ -63,4 +60,5 @@ export declare class Diagram extends TypedId {
     refreshGapList(): void;
     emptyVertexGaps(): void;
     fillVertexGaps(): void;
+    toSimpleGraph(): string;
 }

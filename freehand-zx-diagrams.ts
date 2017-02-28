@@ -2,15 +2,16 @@ import pathInterpolate = require("path-interpolate")
 import shortid = require("shortid")
 
 
+shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£')
 export class uID {
   constructor() {
     this.id = shortid.generate()
-    idLookup[this.id] = this
+    //idLookup[this.id] = this
   }
   id: string
 }
 
-export var idLookup: { [id: string]: any } = []
+//export var idLookup: { [id: string]: any } = []
 
 export class DiagramOptions {
   interpolationDistance: number
@@ -104,7 +105,7 @@ export class Diagram extends TypedId {
   edges: Edge[]
   vertices: Vertex[]
   inferredVertices: Vertex[]
-  vertexGaps: VertexGap[]
+  unpluggedVertexGaps: VertexGap[]
   paths: DrawnObject[]
   pathDictionary: { [path: string]: (Edge | Vertex) }
   constructor() {
@@ -113,6 +114,7 @@ export class Diagram extends TypedId {
     this.edges = []
     this.vertices = []
     this.inferredVertices = []
+    this.unpluggedVertexGaps = []
     this.paths = []
     this.pathDictionary = {}
   }
@@ -127,28 +129,28 @@ export class Diagram extends TypedId {
     return obj
   }
   refreshGapList() {
-    this.vertexGaps = []
+    this.unpluggedVertexGaps = []
     for (var edge of this.edges) {
       if (edge.start.vertex === null) {
-        this.vertexGaps.push(edge.start)
+        this.unpluggedVertexGaps.push(edge.start)
       }
       if (edge.end.vertex === null) {
-        this.vertexGaps.push(edge.end)
+        this.unpluggedVertexGaps.push(edge.end)
       }
     }
   }
   emptyVertexGaps() {
-    for (var gap of this.vertexGaps) {
+    for (var gap of this.unpluggedVertexGaps) {
       gap.vertex = null
     }
     this.inferredVertices = []
   }
   fillVertexGaps() {
     //First get list of vertexGaps
-
+    this.emptyVertexGaps()
     this.refreshGapList()
     // For each vertexGap compare distances to each vertex
-    for (var gap of this.vertexGaps) {
+    for (var gap of this.unpluggedVertexGaps) {
       var closestDist = Math.pow(_diagramOptions.closingEdgeVertexDistance, 2) + 1
       var dist = 0
       for (var vx of this.vertices) {
@@ -164,12 +166,12 @@ export class Diagram extends TypedId {
     var closestDist = Math.pow(_diagramOptions.closingEdgeEdgeDistance, 2) + 1
     dist = 0
     // For each remaining vertexGap, compare to other vertexGaps
-    for (var i = 0; i < this.vertexGaps.length - 1; i++) {
-      var gap1 = this.vertexGaps[i]
-      for (var j = i + 1; j < this.vertexGaps.length; j++) {
-        var gap2 = this.vertexGaps[j]
-        // Check they are indeed different
-        if (gap1.id !== gap2.id) {
+    for (var i = 0; i < this.unpluggedVertexGaps.length; i++) {
+      var gap1 = this.unpluggedVertexGaps[i]
+      for (var j = i + 1; j < this.unpluggedVertexGaps.length; j++) {
+        var gap2 = this.unpluggedVertexGaps[j]
+        // Check they are not already filled
+        if (gap1.vertex !== null && gap2.vertex !== null) {
           dist = posnDistanceSquared(gap1.pos, gap2.pos)
           if (dist < closestDist) {
             closestDist = dist
@@ -189,6 +191,68 @@ export class Diagram extends TypedId {
         this.inferredVertices.push(vx)
       }
     }
+  }
+  toSimpleGraph() {
+    this.fillVertexGaps()
+    var output = {
+      node_vertices: {},
+      undir_edges: {},
+      wire_vertices: {}
+    }
+    //First user-created vertices
+    for (var vertex of this.vertices) {
+      output.node_vertices[vertex.id] = {
+        "data": {
+          "type": "X",
+          "value": ""
+        },
+        "annotation": {
+          "coord": [vertex.pos.x, vertex.pos.y]
+        }
+      }
+    }
+
+    //Now count the degree of each inferred vertex
+    var degreeById: { [id: string]: number } = {}
+    let inc = id => (degreeById[id] = degreeById[id] ? degreeById[id] + 1 : 1)
+    for (edge of this.edges) {
+      inc(edge.start.vertex.id)
+      inc(edge.end.vertex.id)
+    }
+    //Then inferred vertices
+    for (var vertex of this.inferredVertices) {
+      var vertexType = ""
+      var degree = (degreeById[vertex.id] || 0)
+      switch (degree) {
+        case 0:
+          vertexType = "orphan"
+          break;
+        case 1:
+          vertexType = "input"
+          break;
+        case 2:
+          vertexType = "wire"
+          break;
+        default:
+          vertexType = "error"
+          break;
+      }
+
+      output.wire_vertices[vertex.id] = {
+        "annotation": {
+          "boundary": (degree === 1),
+          "coord": [vertex.pos.x, vertex.pos.y]
+        }
+      }
+    }
+    //Then edges
+    for (var edge of this.edges) {
+      output.undir_edges[edge.id] = {
+        src: edge.start.vertex.id,
+        tgt: edge.end.vertex.id
+      }
+    }
+    return JSON.stringify(output)
   }
 }
 

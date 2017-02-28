@@ -12,4 +12,4 @@ for (var _i = 0, testPaths_1 = testPaths; _i < testPaths_1.length; _i++) {
     D.addPath(p);
 }
 D.fillVertexGaps();
-console.log(JSON.stringify(D));
+console.log(D.toSimpleGraph());

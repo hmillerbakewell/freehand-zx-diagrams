@@ -12,15 +12,16 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var pathInterpolate = require("path-interpolate");
 var shortid = require("shortid");
+shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£');
 var uID = (function () {
     function uID() {
         this.id = shortid.generate();
-        exports.idLookup[this.id] = this;
+        //idLookup[this.id] = this
     }
     return uID;
 }());
 exports.uID = uID;
-exports.idLookup = [];
+//export var idLookup: { [id: string]: any } = []
 var DiagramOptions = (function () {
     function DiagramOptions() {
     }
@@ -115,6 +116,7 @@ var Diagram = (function (_super) {
         _this.edges = [];
         _this.vertices = [];
         _this.inferredVertices = [];
+        _this.unpluggedVertexGaps = [];
         _this.paths = [];
         _this.pathDictionary = {};
         return _this;
@@ -131,19 +133,19 @@ var Diagram = (function (_super) {
         return obj;
     };
     Diagram.prototype.refreshGapList = function () {
-        this.vertexGaps = [];
+        this.unpluggedVertexGaps = [];
         for (var _i = 0, _a = this.edges; _i < _a.length; _i++) {
             var edge = _a[_i];
             if (edge.start.vertex === null) {
-                this.vertexGaps.push(edge.start);
+                this.unpluggedVertexGaps.push(edge.start);
             }
             if (edge.end.vertex === null) {
-                this.vertexGaps.push(edge.end);
+                this.unpluggedVertexGaps.push(edge.end);
             }
         }
     };
     Diagram.prototype.emptyVertexGaps = function () {
-        for (var _i = 0, _a = this.vertexGaps; _i < _a.length; _i++) {
+        for (var _i = 0, _a = this.unpluggedVertexGaps; _i < _a.length; _i++) {
             var gap = _a[_i];
             gap.vertex = null;
         }
@@ -151,9 +153,10 @@ var Diagram = (function (_super) {
     };
     Diagram.prototype.fillVertexGaps = function () {
         //First get list of vertexGaps
+        this.emptyVertexGaps();
         this.refreshGapList();
         // For each vertexGap compare distances to each vertex
-        for (var _i = 0, _a = this.vertexGaps; _i < _a.length; _i++) {
+        for (var _i = 0, _a = this.unpluggedVertexGaps; _i < _a.length; _i++) {
             var gap = _a[_i];
             var closestDist = Math.pow(exports._diagramOptions.closingEdgeVertexDistance, 2) + 1;
             var dist = 0;
@@ -171,12 +174,12 @@ var Diagram = (function (_super) {
         var closestDist = Math.pow(exports._diagramOptions.closingEdgeEdgeDistance, 2) + 1;
         dist = 0;
         // For each remaining vertexGap, compare to other vertexGaps
-        for (var i = 0; i < this.vertexGaps.length - 1; i++) {
-            var gap1 = this.vertexGaps[i];
-            for (var j = i + 1; j < this.vertexGaps.length; j++) {
-                var gap2 = this.vertexGaps[j];
-                // Check they are indeed different
-                if (gap1.id !== gap2.id) {
+        for (var i = 0; i < this.unpluggedVertexGaps.length; i++) {
+            var gap1 = this.unpluggedVertexGaps[i];
+            for (var j = i + 1; j < this.unpluggedVertexGaps.length; j++) {
+                var gap2 = this.unpluggedVertexGaps[j];
+                // Check they are not already filled
+                if (gap1.vertex !== null && gap2.vertex !== null) {
                     dist = posnDistanceSquared(gap1.pos, gap2.pos);
                     if (dist < closestDist) {
                         closestDist = dist;
@@ -196,6 +199,70 @@ var Diagram = (function (_super) {
                 this.inferredVertices.push(vx);
             }
         }
+    };
+    Diagram.prototype.toSimpleGraph = function () {
+        this.fillVertexGaps();
+        var output = {
+            node_vertices: {},
+            undir_edges: {},
+            wire_vertices: {}
+        };
+        //First user-created vertices
+        for (var _i = 0, _a = this.vertices; _i < _a.length; _i++) {
+            var vertex = _a[_i];
+            output.node_vertices[vertex.id] = {
+                "data": {
+                    "type": "X",
+                    "value": ""
+                },
+                "annotation": {
+                    "coord": [vertex.pos.x, vertex.pos.y]
+                }
+            };
+        }
+        //Now count the degree of each inferred vertex
+        var degreeById = {};
+        var inc = function (id) { return (degreeById[id] = degreeById[id] ? degreeById[id] + 1 : 1); };
+        for (var _b = 0, _c = this.edges; _b < _c.length; _b++) {
+            edge = _c[_b];
+            inc(edge.start.vertex.id);
+            inc(edge.end.vertex.id);
+        }
+        //Then inferred vertices
+        for (var _d = 0, _e = this.inferredVertices; _d < _e.length; _d++) {
+            var vertex = _e[_d];
+            var vertexType = "";
+            var degree = (degreeById[vertex.id] || 0);
+            switch (degree) {
+                case 0:
+                    vertexType = "orphan";
+                    break;
+                case 1:
+                    vertexType = "input";
+                    break;
+                case 2:
+                    vertexType = "wire";
+                    break;
+                default:
+                    vertexType = "error";
+                    break;
+            }
+            output.wire_vertices[vertex.id] = {
+                "annotation": {
+                    "boundary": (degree === 1),
+                    "coord": [vertex.pos.x, vertex.pos.y]
+                }
+            };
+        }
+        //Then edges
+        for (var _f = 0, _g = this.edges; _f < _g.length; _f++) {
+            var edge = _g[_f];
+            output.undir_edges[edge.id] = {
+                src: edge.start.vertex.id,
+                tgt: edge.end.vertex.id
+            };
+        }
+        return JSON.stringify(output);
     };
     return Diagram;
 }(TypedId));
