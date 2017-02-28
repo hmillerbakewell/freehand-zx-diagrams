@@ -1,0 +1,33 @@
+{
+  "name": "freehand-diagrams",
+  "version": "0.0.1",
+  "description": "Turn freehand drawn zx-diagrams into smoother, computer-readable graphs",
+  "main": "index.js",
+  "dependencies": {
+    "@types/node": "^7.0.5",
+    "path-interpolate": "file:./local_node/path-interpolate-1.0.1.tgz",
+    "shortid": "^2.2.6",
+    "typescript": "^2.2.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hmillerbakewell/FreehandDiagrams.git"
+  },
+  "keywords": [
+    "diagram",
+    "freehand",
+    "draw",
+    "graph",
+    "category"
+  ],
+  "author": "hmillerbakewell",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hmillerbakewell/FreehandDiagrams/issues"
+  },
+  "homepage": "https://github.com/hmillerbakewell/FreehandDiagrams#readme"
+}
