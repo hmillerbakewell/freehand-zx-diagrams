@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hmillerbakewell/FreehandDiagrams.git"
+    "url": "git+https://github.com/hmillerbakewell/freehand-zx-diagrams.git"
   },
   "keywords": [
     "diagram",
@@ -27,7 +27,7 @@
   "author": "hmillerbakewell",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/hmillerbakewell/FreehandDiagrams/issues"
+    "url": "https://github.com/hmillerbakewell/freehand-zx-diagrams/issues"
   },
-  "homepage": "https://github.com/hmillerbakewell/FreehandDiagrams#readme"
+  "homepage": "https://github.com/hmillerbakewell/freehand-zx-diagrams#readme"
 }
