@@ -1,4 +1,4 @@
-export declare class uID {
+export declare abstract class uID {
     constructor();
     id: string;
 }
@@ -9,8 +9,8 @@ export declare class DiagramOptions {
     closingEdgeEdgeDistance: number;
 }
 export declare let _diagramOptions: DiagramOptions;
-export declare class TypedId extends uID {
-    type: string;
+export declare abstract class TypedId extends uID {
+    protected type: string;
     constructor();
 }
 export declare class DrawnObject extends TypedId {
@@ -46,19 +46,24 @@ export declare class VertexGap extends TypedId {
     pos: DiagramPosition;
     constructor(pos: DiagramPosition);
 }
-export declare class Diagram extends TypedId {
+export interface IDiagramFlow {
+    importEdge: (edge: Edge) => void;
+    importVertex: (vertex: Vertex) => void;
+    importRewriteDiagram: (diagram: Diagram) => void;
+}
+export declare class Diagram extends TypedId implements IDiagramFlow {
+    importEdge: (edge: Edge) => void;
+    importVertex: (vertex: Vertex) => void;
+    importRewriteDiagram: (diagram: Diagram) => void;
     edges: Edge[];
     vertices: Vertex[];
     inferredVertices: Vertex[];
-    unpluggedVertexGaps: VertexGap[];
-    paths: DrawnObject[];
-    pathDictionary: {
-        [path: string]: (Edge | Vertex);
-    };
+    private unpluggedVertexGaps;
     constructor();
-    addPath(path: string): any;
-    refreshGapList(): void;
-    emptyVertexGaps(): void;
-    fillVertexGaps(): void;
+    private addPath(path);
+    private refreshGapList();
+    private emptyVertexGaps();
+    private fillVertexGaps();
+    toSVGDrawing(svgIdentifier: string): void;
     toSimpleGraph(): string;
 }

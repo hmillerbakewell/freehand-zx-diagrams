@@ -1,9 +1,10 @@
 import pathInterpolate = require("path-interpolate")
 import shortid = require("shortid")
+import SVG = require("svgjs")
 
 
 shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£')
-export class uID {
+export abstract class uID {
   constructor() {
     this.id = shortid.generate()
     //idLookup[this.id] = this
@@ -25,8 +26,8 @@ _diagramOptions.closingEdgeLoopDistance = 20
 _diagramOptions.closingEdgeVertexDistance = 30
 _diagramOptions.closingEdgeEdgeDistance = 20
 
-export class TypedId extends uID {
-  type: string
+export abstract class TypedId extends uID {
+  protected type: string
   constructor() {
     super()
     // If you see this, then you didn't set a new type in the constructor
@@ -100,14 +101,20 @@ export class VertexGap extends TypedId {
   }
 }
 
+export interface IDiagramFlow {
+  importEdge: (edge: Edge) => void
+  importVertex: (vertex: Vertex) => void
+  importRewriteDiagram: (diagram: Diagram) => void
+}
 
-export class Diagram extends TypedId {
+export class Diagram extends TypedId implements IDiagramFlow {
+  importEdge: (edge: Edge) => void
+  importVertex: (vertex: Vertex) => void
+  importRewriteDiagram: (diagram: Diagram) => void
   edges: Edge[]
   vertices: Vertex[]
   inferredVertices: Vertex[]
-  unpluggedVertexGaps: VertexGap[]
-  paths: DrawnObject[]
-  pathDictionary: { [path: string]: (Edge | Vertex) }
+  private unpluggedVertexGaps: VertexGap[]
   constructor() {
     super()
     this.type = "Diagram"
@@ -115,12 +122,9 @@ export class Diagram extends TypedId {
     this.vertices = []
     this.inferredVertices = []
     this.unpluggedVertexGaps = []
-    this.paths = []
-    this.pathDictionary = {}
   }
-  addPath(path: string) {
+  private addPath(path: string) {
     let obj = pathToObject(path)
-    this.pathDictionary[path] = obj
     if (obj.type === "Edge") {
       this.edges.push(<Edge>obj)
     } else {
@@ -128,7 +132,7 @@ export class Diagram extends TypedId {
     }
     return obj
   }
-  refreshGapList() {
+  private refreshGapList() {
     this.unpluggedVertexGaps = []
     for (var edge of this.edges) {
       if (edge.start.vertex === null) {
@@ -139,13 +143,13 @@ export class Diagram extends TypedId {
       }
     }
   }
-  emptyVertexGaps() {
+  private emptyVertexGaps() {
     for (var gap of this.unpluggedVertexGaps) {
       gap.vertex = null
     }
     this.inferredVertices = []
   }
-  fillVertexGaps() {
+  private fillVertexGaps() {
     //First get list of vertexGaps
     this.emptyVertexGaps()
     this.refreshGapList()
@@ -192,6 +196,15 @@ export class Diagram extends TypedId {
       }
     }
   }
+  toSVGDrawing(svgIdentifier: string) {
+    var svg_holder = SVG(svgIdentifier)
+    var edge_group = svg_holder.group()
+    for (var edge of this.edges) {
+      edge_group.path(edge.drawn.waypoints.join(" "))
+    }
+  }
+
+
   toSimpleGraph() {
     this.fillVertexGaps()
     var output = {

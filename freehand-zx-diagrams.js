@@ -12,6 +12,7 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var pathInterpolate = require("path-interpolate");
 var shortid = require("shortid");
+var SVG = require("svgjs");
 shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£');
 var uID = (function () {
     function uID() {
@@ -117,13 +118,10 @@ var Diagram = (function (_super) {
         _this.vertices = [];
         _this.inferredVertices = [];
         _this.unpluggedVertexGaps = [];
-        _this.paths = [];
-        _this.pathDictionary = {};
         return _this;
     }
     Diagram.prototype.addPath = function (path) {
         var obj = pathToObject(path);
-        this.pathDictionary[path] = obj;
         if (obj.type === "Edge") {
             this.edges.push(obj);
         }
@@ -198,6 +196,14 @@ var Diagram = (function (_super) {
                 gap1.vertex = vx;
                 this.inferredVertices.push(vx);
             }
+        }
+    };
+    Diagram.prototype.toSVGDrawing = function (svgIdentifier) {
+        var svg_holder = SVG(svgIdentifier);
+        var edge_group = svg_holder.group();
+        for (var _i = 0, _a = this.edges; _i < _a.length; _i++) {
+            var edge = _a[_i];
+            edge_group.path(edge.drawn.waypoints.join(" "));
         }
     };
     Diagram.prototype.toSimpleGraph = function () {
