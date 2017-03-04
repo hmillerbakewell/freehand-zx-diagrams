@@ -10,15 +10,21 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var pathInterpolate = require("path-interpolate");
 var shortid = require("shortid");
 var SVG = require("svgjs");
 shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£');
 var uID = (function () {
     function uID() {
-        this.id = shortid.generate();
+        this._id = shortid.generate();
         //idLookup[this.id] = this
     }
+    Object.defineProperty(uID.prototype, "id", {
+        get: function () {
+            return this._id;
+        },
+        enumerable: true,
+        configurable: true
+    });
     return uID;
 }());
 exports.uID = uID;
@@ -32,16 +38,23 @@ exports.DiagramOptions = DiagramOptions;
 exports._diagramOptions = new DiagramOptions();
 exports._diagramOptions.interpolationDistance = 10;
 exports._diagramOptions.closingEdgeLoopDistance = 20;
-exports._diagramOptions.closingEdgeVertexDistance = 30;
+exports._diagramOptions.closingEdgeVertexDistance = 20;
 exports._diagramOptions.closingEdgeEdgeDistance = 20;
 var TypedId = (function (_super) {
     __extends(TypedId, _super);
     function TypedId() {
         var _this = _super.call(this) || this;
         // If you see this, then you didn't set a new type in the constructor
-        _this.type = "TypedId";
+        _this._type = "TypedId";
         return _this;
     }
+    Object.defineProperty(TypedId.prototype, "type", {
+        get: function () {
+            return this._type;
+        },
+        enumerable: true,
+        configurable: true
+    });
     return TypedId;
 }(uID));
 exports.TypedId = TypedId;
@@ -49,27 +62,21 @@ var DrawnObject = (function (_super) {
     __extends(DrawnObject, _super);
     function DrawnObject() {
         var _this = _super.call(this) || this;
-        _this.type = "DrawnObject";
+        _this._type = "DrawnObject";
         return _this;
     }
     return DrawnObject;
 }(TypedId));
 exports.DrawnObject = DrawnObject;
-var DiagramPosition = (function () {
-    function DiagramPosition(xyArray) {
-        this.x = 0;
-        this.y = 0;
-        this.x = xyArray[0];
-        this.y = xyArray[1];
-    }
-    return DiagramPosition;
-}());
-exports.DiagramPosition = DiagramPosition;
+function interpolate(lambda, a, b) {
+    return ((1 - lambda) * a + lambda * b);
+}
 function posnDistanceSquared(a, b) {
     var dx = a.x - b.x;
     var dy = a.y - b.y;
     return dx * dx + dy * dy;
 }
+exports.posnDistanceSquared = posnDistanceSquared;
 var Vertex = (function (_super) {
     __extends(Vertex, _super);
     function Vertex(pos) {
@@ -77,7 +84,7 @@ var Vertex = (function (_super) {
         _this.pos = pos;
         _this.data = "";
         _this.drawn = null;
-        _this.type = "Vertex";
+        _this._type = "Vertex";
         return _this;
     }
     return Vertex;
@@ -91,7 +98,7 @@ var Edge = (function (_super) {
         _this.end = new VertexGap(end);
         _this.data = "";
         _this.drawn = null;
-        _this.type = "Edge";
+        _this._type = "Edge";
         return _this;
     }
     return Edge;
@@ -102,7 +109,7 @@ var VertexGap = (function (_super) {
     function VertexGap(pos) {
         var _this = _super.call(this) || this;
         _this.pos = pos;
-        _this.type = "VertexGap";
+        _this._type = "VertexGap";
         _this.vertex = null;
         return _this;
     }
@@ -113,23 +120,49 @@ var Diagram = (function (_super) {
     __extends(Diagram, _super);
     function Diagram() {
         var _this = _super.call(this) || this;
-        _this.type = "Diagram";
+        _this.listeners = [];
+        _this.subscribe = function (handler) {
+            _this.listeners.push(handler);
+        };
+        _this.fireChange = function () {
+            for (var _i = 0, _a = _this.listeners; _i < _a.length; _i++) {
+                var l = _a[_i];
+                l.upstreamChange();
+            }
+        };
+        _this.importEdge = function (edge) {
+            _this.edges.push(edge);
+            _this.fillVertexGaps();
+            _this.fireChange();
+        };
+        _this.importVertex = function (vertex) {
+            _this.vertices.push(vertex);
+            _this.fillVertexGaps();
+            _this.fireChange();
+        };
+        _this.importRewriteDiagram = function (diagram) {
+            _this.edges = [];
+            _this.vertices = [];
+            _this.inferredVertices = [];
+            _this.refreshGapList();
+            for (var _i = 0, _a = diagram.edges; _i < _a.length; _i++) {
+                var edge = _a[_i];
+                _this.edges.push(edge);
+            }
+            for (var _b = 0, _c = diagram.vertices; _b < _c.length; _b++) {
+                var vertex = _c[_b];
+                _this.vertices.push(vertex);
+            }
+            _this.fillVertexGaps();
+            _this.fireChange();
+        };
+        _this._type = "Diagram";
         _this.edges = [];
         _this.vertices = [];
         _this.inferredVertices = [];
         _this.unpluggedVertexGaps = [];
         return _this;
     }
-    Diagram.prototype.addPath = function (path) {
-        var obj = pathToObject(path);
-        if (obj.type === "Edge") {
-            this.edges.push(obj);
-        }
-        else {
-            this.vertices.push(obj);
-        }
-        return obj;
-    };
     Diagram.prototype.refreshGapList = function () {
         this.unpluggedVertexGaps = [];
         for (var _i = 0, _a = this.edges; _i < _a.length; _i++) {
@@ -169,21 +202,21 @@ var Diagram = (function (_super) {
             }
         }
         this.refreshGapList();
-        var closestDist = Math.pow(exports._diagramOptions.closingEdgeEdgeDistance, 2) + 1;
         dist = 0;
         // For each remaining vertexGap, compare to other vertexGaps
         for (var i = 0; i < this.unpluggedVertexGaps.length; i++) {
+            var closestDist = Math.pow(exports._diagramOptions.closingEdgeEdgeDistance, 2) + 1;
             var gap1 = this.unpluggedVertexGaps[i];
             for (var j = i + 1; j < this.unpluggedVertexGaps.length; j++) {
                 var gap2 = this.unpluggedVertexGaps[j];
                 // Check they are not already filled
-                if (gap1.vertex !== null && gap2.vertex !== null) {
+                if (gap1.vertex === null && gap2.vertex === null) {
                     dist = posnDistanceSquared(gap1.pos, gap2.pos);
                     if (dist < closestDist) {
                         closestDist = dist;
                         // Claim closest valid vertex
-                        var midpoint = [pathInterpolate.interpolate(0.5, gap1.pos.x, gap2.pos.x), pathInterpolate.interpolate(0.5, gap1.pos.y, gap2.pos.y)];
-                        var vx = new Vertex(new DiagramPosition(midpoint));
+                        var midpoint = [interpolate(0.5, gap1.pos.x, gap2.pos.x), interpolate(0.5, gap1.pos.y, gap2.pos.y)];
+                        var vx = new Vertex({ x: midpoint[0], y: midpoint[1] });
                         this.inferredVertices.push(vx);
                         gap1.vertex = vx;
                         gap2.vertex = vx;
@@ -206,105 +239,6 @@ var Diagram = (function (_super) {
             edge_group.path(edge.drawn.waypoints.join(" "));
         }
     };
-    Diagram.prototype.toSimpleGraph = function () {
-        this.fillVertexGaps();
-        var output = {
-            node_vertices: {},
-            undir_edges: {},
-            wire_vertices: {}
-        };
-        //First user-created vertices
-        for (var _i = 0, _a = this.vertices; _i < _a.length; _i++) {
-            var vertex = _a[_i];
-            output.node_vertices[vertex.id] = {
-                "data": {
-                    "type": "X",
-                    "value": ""
-                },
-                "annotation": {
-                    "coord": [vertex.pos.x, vertex.pos.y]
-                }
-            };
-        }
-        //Now count the degree of each inferred vertex
-        var degreeById = {};
-        var inc = function (id) { return (degreeById[id] = degreeById[id] ? degreeById[id] + 1 : 1); };
-        for (var _b = 0, _c = this.edges; _b < _c.length; _b++) {
-            edge = _c[_b];
-            inc(edge.start.vertex.id);
-            inc(edge.end.vertex.id);
-        }
-        //Then inferred vertices
-        for (var _d = 0, _e = this.inferredVertices; _d < _e.length; _d++) {
-            var vertex = _e[_d];
-            var vertexType = "";
-            var degree = (degreeById[vertex.id] || 0);
-            switch (degree) {
-                case 0:
-                    vertexType = "orphan";
-                    break;
-                case 1:
-                    vertexType = "input";
-                    break;
-                case 2:
-                    vertexType = "wire";
-                    break;
-                default:
-                    vertexType = "error";
-                    break;
-            }
-            output.wire_vertices[vertex.id] = {
-                "annotation": {
-                    "boundary": (degree === 1),
-                    "coord": [vertex.pos.x, vertex.pos.y]
-                }
-            };
-        }
-        //Then edges
-        for (var _f = 0, _g = this.edges; _f < _g.length; _f++) {
-            var edge = _g[_f];
-            output.undir_edges[edge.id] = {
-                src: edge.start.vertex.id,
-                tgt: edge.end.vertex.id
-            };
-        }
-        return JSON.stringify(output);
-    };
     return Diagram;
 }(TypedId));
 exports.Diagram = Diagram;
-function pathToPosnList(path) {
-    var posnList = [];
-    for (var i = 0; i < path.length; i++) {
-        posnList.push(new DiagramPosition(path[i]));
-    }
-    return posnList;
-}
-function pathToObject(pathAsString) {
-    var interpolatedPath = pathInterpolate(pathAsString, exports._diagramOptions.interpolationDistance);
-    var dO = new DrawnObject();
-    dO.start = interpolatedPath.start;
-    dO.end = interpolatedPath.end;
-    dO.length = interpolatedPath.length;
-    dO.bbox = interpolatedPath.bbox;
-    dO.waypoints = interpolatedPath.waypoints;
-    var pathAsPositions = pathToPosnList(interpolatedPath.waypoints);
-    var itIsAnEdge = true;
-    // Is it closed?
-    var start = new DiagramPosition(interpolatedPath.start);
-    var end = new DiagramPosition(interpolatedPath.end);
-    if (posnDistanceSquared(start, end) < Math.pow(exports._diagramOptions.closingEdgeLoopDistance, 2)) {
-        itIsAnEdge = false;
-    }
-    var r; // result
-    if (itIsAnEdge) {
-        r = new Edge(start, end);
-    }
-    else {
-        var midpointX = interpolatedPath.bbox[0] + (interpolatedPath.bbox[2] / 2);
-        var midpointY = interpolatedPath.bbox[1] + (interpolatedPath.bbox[3] / 2);
-        r = new Vertex(new DiagramPosition([midpointX, midpointY]));
-    }
-    r.drawn = dO;
-    return r;
-}

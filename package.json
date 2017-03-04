@@ -9,9 +9,13 @@
     "path-interpolate": "file:./local_node/path-interpolate-1.0.1.tgz",
     "shortid": "^2.2.6",
     "svgjs": "^2.4.0",
-    "typescript": "^2.2.1"
+    "typescript": "^2.2.1",
+    "watchify": "^3.9.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "watchify": "^3.9.0"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
