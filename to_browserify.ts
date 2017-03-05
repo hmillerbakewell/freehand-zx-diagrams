@@ -16,4 +16,13 @@ $(document).ready(function () {
     freehandOnSVG.createSVG('svgInputHolder')
     zxJSON.UISelector = "#textJSONOutputHolder"
     zxSVG.SVG = SVG("svgOutputHolder")
+    /*
+    freehandOnSVG.takeInput = true
+    freehandOnSVG.startPath()
+    freehandOnSVG.addPoint(0,0)
+    freehandOnSVG.addPoint(100,100)
+    freehandOnSVG.addPoint(200,0)
+    freehandOnSVG.addPoint(200,200)
+    freehandOnSVG.endPath()
+    */
 })

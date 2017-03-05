@@ -1,4 +1,4 @@
-import Diagrams = require("./freehand-zx-diagrams.js")
+import Diagrams = require("./freehand-diagrams.js")
 import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
 import $ = require("jquery")
@@ -19,4 +19,9 @@ export class DiagramIOHTMLModule implements Diagrams.IDiagramInput, Diagrams.IUp
             console.log("This element has subscribed to upstream changes, but not implemented a handler.")
         }
     }
+}
+
+
+export interface IFreehandOnSVGEdge {
+    RDPWaypoints: Diagrams.IDiagramPosition[]
 }

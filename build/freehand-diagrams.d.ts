@@ -37,7 +37,7 @@ export declare class Vertex extends TypedId {
 export declare class Edge extends TypedId {
     start: VertexGap;
     end: VertexGap;
-    data: string;
+    data: any;
     drawn: DrawnObject | null;
     constructor(start: IDiagramPosition, end: IDiagramPosition);
 }

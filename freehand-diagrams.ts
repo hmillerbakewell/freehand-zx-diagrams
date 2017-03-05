@@ -84,7 +84,7 @@ export class Vertex extends TypedId {
 export class Edge extends TypedId {
   start: VertexGap
   end: VertexGap
-  data: string
+  data: any
   drawn: DrawnObject | null
   constructor(start: IDiagramPosition, end: IDiagramPosition) {
     super()

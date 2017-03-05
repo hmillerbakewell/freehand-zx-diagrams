@@ -10,10 +10,11 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-var Diagrams = require("./freehand-zx-diagrams.js");
+var Diagrams = require("./freehand-diagrams.js");
 var SVG = require("svgjs");
 var pathInterpolate = require("path-interpolate");
 var DiagramIO = require("./freehand-io.js");
+var RDP = require("./RamerDouglasPeucker.js");
 var FreehandOnSVGIOModule = (function (_super) {
     __extends(FreehandOnSVGIOModule, _super);
     function FreehandOnSVGIOModule(targetDiagram) {
@@ -36,7 +37,7 @@ var FreehandOnSVGIOModule = (function (_super) {
         };
         _this.createSVG = function (selector) {
             _this.svgElement = SVG(selector).style("border: 1px solid black");
-            _this.svgElement.size(600, 600).viewbox(); // TODO viewbox
+            _this.svgElement.size(500, 500).viewbox(); // TODO viewbox
             // Mouse events
             _this.svgElement.mousedown(_this.mousedown);
             _this.svgElement.mouseup(_this.mouseup);
@@ -78,11 +79,13 @@ var FreehandOnSVGIOModule = (function (_super) {
             _this.drawAllShapes();
             if (_this._targetDiagram) {
                 var pathAsObj = _this.pathToObject(s);
-                if (pathAsObj.type === "Edge") {
-                    _this._targetDiagram.importEdge(pathAsObj);
-                }
-                else if (pathAsObj.type === "Vertex") {
-                    _this._targetDiagram.importVertex(pathAsObj);
+                if (pathAsObj !== null) {
+                    if (pathAsObj.type === "Edge") {
+                        _this._targetDiagram.importEdge(pathAsObj);
+                    }
+                    else if (pathAsObj.type === "Vertex") {
+                        _this._targetDiagram.importVertex(pathAsObj);
+                    }
                 }
             }
         };
@@ -92,14 +95,9 @@ var FreehandOnSVGIOModule = (function (_super) {
                 .replace(/[\s,]+/g, ' ')
                 .trim();
             var interpolatedPath = pathInterpolate(pathAsString, Diagrams._diagramOptions.interpolationDistance);
+            var RDPWaypoints = RDP.RamerDouglasPeucker(interpolatedPath.waypoints, 20).concat([interpolatedPath.end]);
             if (interpolatedPath.length > 10) {
-                var dO = new Diagrams.DrawnObject();
-                dO.start = interpolatedPath.start;
-                dO.end = interpolatedPath.end;
-                dO.length = interpolatedPath.length;
-                dO.bbox = interpolatedPath.bbox;
-                dO.waypoints = interpolatedPath.waypoints;
-                var pathAsPositions = pathToPosnList(interpolatedPath.waypoints);
+                var pathAsPositions = pathToPosnList(RDPWaypoints);
                 var itIsAnEdge = true;
                 // Is it closed?
                 var start = { x: interpolatedPath.start[0], y: interpolatedPath.start[1] };
@@ -110,13 +108,16 @@ var FreehandOnSVGIOModule = (function (_super) {
                 var r; // result
                 if (itIsAnEdge) {
                     r = new Diagrams.Edge(start, end);
+                    var data = {
+                        RDPWaypoints: pathToPosnList(RDPWaypoints)
+                    };
+                    r.data = data;
                 }
                 else {
                     var midpointX = interpolatedPath.bbox[0] + (interpolatedPath.bbox[2] / 2);
                     var midpointY = interpolatedPath.bbox[1] + (interpolatedPath.bbox[3] / 2);
                     r = new Diagrams.Vertex({ x: midpointX, y: midpointY });
                 }
-                r.drawn = dO;
                 return r;
             }
             else {

@@ -1,8 +1,10 @@
-import Diagrams = require("./freehand-zx-diagrams.js")
+import Diagrams = require("./freehand-diagrams.js")
 import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
 import $ = require("jquery")
 import DiagramIO = require("./freehand-io.js")
+import RDP = require("./RamerDouglasPeucker.js")
+
 
 export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     takeInput: boolean
@@ -35,7 +37,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     createSVG: (selector: string) => void = (selector: string) => {
 
         this.svgElement = SVG(selector).style("border: 1px solid black")
-        this.svgElement.size(600, 600).viewbox(); // TODO viewbox
+        this.svgElement.size(500, 500).viewbox(); // TODO viewbox
 
         // Mouse events
         this.svgElement.mousedown(this.mousedown);
@@ -91,10 +93,12 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         this.drawAllShapes();
         if (this._targetDiagram) {
             var pathAsObj = this.pathToObject(s)
-            if (pathAsObj.type === "Edge") {
-                this._targetDiagram.importEdge(<Diagrams.Edge>pathAsObj)
-            } else if (pathAsObj.type === "Vertex") {
-                this._targetDiagram.importVertex(<Diagrams.Vertex>pathAsObj)
+            if (pathAsObj !== null) {
+                if (pathAsObj.type === "Edge") {
+                    this._targetDiagram.importEdge(<Diagrams.Edge>pathAsObj)
+                } else if (pathAsObj.type === "Vertex") {
+                    this._targetDiagram.importVertex(<Diagrams.Vertex>pathAsObj)
+                }
             }
         }
     }
@@ -104,15 +108,10 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             .replace(/[\s,]+/g, ' ')
             .trim()
         var interpolatedPath = pathInterpolate(pathAsString, Diagrams._diagramOptions.interpolationDistance)
+        var RDPWaypoints = RDP.RamerDouglasPeucker(interpolatedPath.waypoints, 20).concat([interpolatedPath.end])
         if (interpolatedPath.length > 10) {
-            var dO = new Diagrams.DrawnObject()
-            dO.start = interpolatedPath.start
-            dO.end = interpolatedPath.end
-            dO.length = interpolatedPath.length
-            dO.bbox = interpolatedPath.bbox
-            dO.waypoints = interpolatedPath.waypoints
 
-            var pathAsPositions = pathToPosnList(interpolatedPath.waypoints)
+            var pathAsPositions = pathToPosnList(RDPWaypoints)
             var itIsAnEdge = true
             // Is it closed?
             var start = { x: interpolatedPath.start[0], y: interpolatedPath.start[1] }
@@ -123,12 +122,15 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             var r: (Diagrams.Edge | Diagrams.Vertex) // result
             if (itIsAnEdge) {
                 r = new Diagrams.Edge(start, end)
+                var data: DiagramIO.IFreehandOnSVGEdge = {
+                    RDPWaypoints: pathToPosnList(RDPWaypoints)
+                }
+                r.data = data
             } else {
                 var midpointX = interpolatedPath.bbox[0] + (interpolatedPath.bbox[2] / 2)
                 var midpointY = interpolatedPath.bbox[1] + (interpolatedPath.bbox[3] / 2)
                 r = new Diagrams.Vertex({ x: midpointX, y: midpointY })
             }
-            r.drawn = dO
             return r
         } else {
             return null

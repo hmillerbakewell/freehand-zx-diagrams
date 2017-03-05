@@ -1,4 +1,4 @@
-import Diagrams = require("./freehand-zx-diagrams.js");
+import Diagrams = require("./freehand-diagrams.js");
 import SVG = require("svgjs");
 import DiagramIO = require("./freehand-io.js");
 export declare class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
