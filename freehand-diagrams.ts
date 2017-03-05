@@ -1,6 +1,4 @@
-import pathInterpolate = require("path-interpolate")
 import shortid = require("shortid")
-import SVG = require("svgjs")
 
 
 shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£')
@@ -41,25 +39,9 @@ export abstract class TypedId extends uID {
   }
 }
 
-export class DrawnObject extends TypedId {
-  start: number[]
-  end: number[]
-  length: number
-  bbox: number[]
-  waypoints: number[][]
-  constructor() {
-    super()
-    this._type = "DrawnObject"
-  }
-}
-
 export interface IDiagramPosition {
   x: number
   y: number
-}
-
-function interpolate(lambda: number, a: number, b: number) {
-  return ((1 - lambda) * a + lambda * b)
 }
 
 export function posnDistanceSquared(a: IDiagramPosition, b: IDiagramPosition) {
@@ -70,13 +52,11 @@ export function posnDistanceSquared(a: IDiagramPosition, b: IDiagramPosition) {
 
 export class Vertex extends TypedId {
   pos: IDiagramPosition
-  data: string
-  drawn: DrawnObject | null
+  data: any
   constructor(pos: IDiagramPosition) {
     super()
     this.pos = pos
-    this.data = ""
-    this.drawn = null
+    this.data = {}
     this._type = "Vertex"
   }
 }
@@ -85,13 +65,11 @@ export class Edge extends TypedId {
   start: VertexGap
   end: VertexGap
   data: any
-  drawn: DrawnObject | null
   constructor(start: IDiagramPosition, end: IDiagramPosition) {
     super()
     this.start = new VertexGap(start)
     this.end = new VertexGap(end)
-    this.data = ""
-    this.drawn = null
+    this.data = {}
     this._type = "Edge"
   }
 }
@@ -116,7 +94,14 @@ export interface IUpstreamListener {
   upstreamChange: () => void
 }
 
+/**
+ * Innermost Diagram object
+ * Has edges, vertices, ways to import them and events
+ */
 export class Diagram extends TypedId implements IDiagramInput {
+
+  // Event handling
+
   private listeners: (IUpstreamListener)[] = []
   subscribe: (handler: IUpstreamListener) => void = (handler) => {
     this.listeners.push(handler)
@@ -126,112 +111,31 @@ export class Diagram extends TypedId implements IDiagramInput {
       l.upstreamChange()
     }
   }
+
+  // Importing
   importEdge: (edge: Edge) => void = (edge: Edge) => {
     this.edges.push(edge)
-    this.fillVertexGaps()
     this.fireChange()
   }
   importVertex: (vertex: Vertex) => void = (vertex: Vertex) => {
     this.vertices.push(vertex)
-    this.fillVertexGaps()
     this.fireChange()
   }
   importRewriteDiagram: (diagram: Diagram) => void = (diagram: Diagram) => {
     this.edges = []
     this.vertices = []
-    this.inferredVertices = []
-    this.refreshGapList()
     for (var edge of diagram.edges) {
       this.edges.push(edge)
     }
     for (var vertex of diagram.vertices) {
       this.vertices.push(vertex)
     }
-    this.fillVertexGaps()
     this.fireChange()
   }
-  edges: Edge[]
-  vertices: Vertex[]
-  inferredVertices: Vertex[]
-  private unpluggedVertexGaps: VertexGap[]
-  constructor() {
-    super()
-    this._type = "Diagram"
-    this.edges = []
-    this.vertices = []
-    this.inferredVertices = []
-    this.unpluggedVertexGaps = []
-  }
-  private refreshGapList() {
-    this.unpluggedVertexGaps = []
-    for (var edge of this.edges) {
-      if (edge.start.vertex === null) {
-        this.unpluggedVertexGaps.push(edge.start)
-      }
-      if (edge.end.vertex === null) {
-        this.unpluggedVertexGaps.push(edge.end)
-      }
-    }
-  }
-  private emptyVertexGaps() {
-    for (var gap of this.unpluggedVertexGaps) {
-      gap.vertex = null
-    }
-    this.inferredVertices = []
-  }
-  private fillVertexGaps() {
-    //First get list of vertexGaps
-    this.emptyVertexGaps()
-    this.refreshGapList()
-    // For each vertexGap compare distances to each vertex
-    for (var gap of this.unpluggedVertexGaps) {
-      var closestDist = Math.pow(_diagramOptions.closingEdgeVertexDistance, 2) + 1
-      var dist = 0
-      for (var vx of this.vertices) {
-        dist = posnDistanceSquared(gap.pos, vx.pos)
-        if (dist < closestDist) {
-          closestDist = dist
-          // Claim closest valid vertex
-          gap.vertex = vx
-        }
-      }
-    }
-    this.refreshGapList()
-    dist = 0
-    // For each remaining vertexGap, compare to other vertexGaps
-    for (var i = 0; i < this.unpluggedVertexGaps.length; i++) {
-      var closestDist = Math.pow(_diagramOptions.closingEdgeEdgeDistance, 2) + 1
-      var gap1 = this.unpluggedVertexGaps[i]
-      for (var j = i + 1; j < this.unpluggedVertexGaps.length; j++) {
-        var gap2 = this.unpluggedVertexGaps[j]
-        // Check they are not already filled
-        if (gap1.vertex === null && gap2.vertex === null) {
-          dist = posnDistanceSquared(gap1.pos, gap2.pos)
-          if (dist < closestDist) {
-            closestDist = dist
-            // Claim closest valid vertex
-            var midpoint = [interpolate(0.5, gap1.pos.x, gap2.pos.x), interpolate(0.5, gap1.pos.y, gap2.pos.y)]
-            var vx = new Vertex({ x: midpoint[0], y: midpoint[1] })
-            this.inferredVertices.push(vx)
-            gap1.vertex = vx
-            gap2.vertex = vx
-          }
-        }
-      }
-      // If, at the end, no other vertexGaps were close, then create a new vertex.
-      if (gap1.vertex === null) {
-        var vx = new Vertex(gap1.pos)
-        gap1.vertex = vx
-        this.inferredVertices.push(vx)
-      }
-    }
-  }
-  toSVGDrawing(svgIdentifier: string) {
-    var svg_holder = SVG(svgIdentifier)
-    var edge_group = svg_holder.group()
-    for (var edge of this.edges) {
-      edge_group.path(edge.drawn.waypoints.join(" "))
-    }
-  }
+  edges: Edge[] = []
+  vertices: Vertex[] = []
 
+  toString: () => string = () => {
+    return JSON.stringify(this)
+  }
 }
