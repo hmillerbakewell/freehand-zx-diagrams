@@ -1,16 +1,20 @@
 <head>
     <meta charset="UTF8" />
     <script src="./browser.js"></script>
+    <link rel="stylesheet" type="text/css" href="basic.css">
 </head>
 
 <body>
-    <div id="inputDrawingPanel">
+    <div id="inputDrawingPanel" class="IOHolder">
+        Draw inside this box:
         <div id="svgInputHolder"></div>
     </div>
-    <div id="outputDrawingPanel">
+    <div id="outputDrawingPanel" class="IOHolder">
+        SVG render of the graph
         <div id="svgOutputHolder"></div>
     </div>
-    <div id="outputTextPanel">
+    <div id="outputTextPanel" class="IOHolder">
+        JSON output for Quantomatic
         <pre id="textJSONOutputHolder"></div>
     </div>
 </body>
