@@ -76,12 +76,19 @@ export class Edge extends TypedId {
 
 export class VertexGap extends TypedId {
   vertex: Vertex | null
-  pos: IDiagramPosition
+  _pos: IDiagramPosition
   constructor(pos: IDiagramPosition) {
     super()
-    this.pos = pos
+    this._pos = pos
     this._type = "VertexGap"
     this.vertex = null
+  }
+  get pos() {
+    if (this.vertex) {
+      return this.vertex.pos
+    } else {
+      return this._pos
+    }
   }
 }
 
@@ -89,6 +96,7 @@ export interface IDiagramInput {
   importEdge: (edge: Edge) => void
   importVertex: (vertex: Vertex) => void
   importRewriteDiagram: (diagram: Diagram) => void
+  fireChange: () => void
 }
 export interface IUpstreamListener {
   upstreamChange: () => void
@@ -106,7 +114,7 @@ export class Diagram extends TypedId implements IDiagramInput {
   subscribe: (handler: IUpstreamListener) => void = (handler) => {
     this.listeners.push(handler)
   }
-  private fireChange: () => void = () => {
+  fireChange: () => void = () => {
     for (var l of this.listeners) {
       l.upstreamChange()
     }

@@ -12,6 +12,9 @@ export class DiagramIOHTMLModule implements Diagrams.IDiagramInput, Diagrams.IUp
     importEdge: (edge: Diagrams.Edge) => void
     importVertex: (vertex: Diagrams.Vertex) => void
     importRewriteDiagram: (diagram: Diagrams.Diagram) => void
+    fireChange = () => {
+        this.targetDiagram.fireChange()
+    }
     upstreamChange: () => void
     constructor(targetDiagram: Diagrams.IDiagramInput) {
         this._targetDiagram = targetDiagram
