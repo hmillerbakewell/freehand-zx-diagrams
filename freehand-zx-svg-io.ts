@@ -15,6 +15,29 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     onDiagramChange() {
         this.toZXSVG()
     }
+    clickedElement: (e: MouseEvent) => void = (e) => {
+        e.preventDefault()
+        if ((<any>e.srcElement).dataset) {
+            var clickedID = (<any>e.srcElement).dataset["id"]
+        }
+        if (clickedID) {
+            var ele = this.idToElement[clickedID]
+            if (ele.type === "Vertex") {
+                var dv = <ZX.IVertexData>ele.data
+                if (dv.type === ZX.VERTEXTYPES.Z) {
+                    dv.type = ZX.VERTEXTYPES.X
+                } else if (dv.type === ZX.VERTEXTYPES.X) {
+                    dv.type = ZX.VERTEXTYPES.HADAMARD
+                } else if (dv.type === ZX.VERTEXTYPES.HADAMARD) {
+                    dv.type = ZX.VERTEXTYPES.Z
+                }
+                this._targetDiagram.fireChange()
+            } else if (ele.type === "Edge") {
+
+            }
+        }
+    }
+    idToElement: { [index: string]: (Diagrams.Vertex | Diagrams.Edge) } = {}
     SVG: SVG.Container
     toZXSVG() {
         if (this.SVG) {

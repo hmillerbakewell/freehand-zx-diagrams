@@ -23,6 +23,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     // Mouse Events
 
     mousedown: (e: MouseEvent) => void = (e) => {
+        e.preventDefault()
         var cursor = this.cursor(e)
         this.startPath();
         this.takeInput = true;
@@ -30,6 +31,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
 
     }
     mouseup: (e: MouseEvent) => void = (e) => {
+        e.preventDefault()
         var cursor = this.cursor(e)
 
         this.addPoint(cursor.x, cursor.y);
@@ -37,6 +39,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         this.takeInput = false;
     }
     mousemove: (e: MouseEvent) => void = (e) => {
+        e.preventDefault()
         var cursor = this.cursor(e)
         this.addPoint(cursor.x, cursor.y);
 
