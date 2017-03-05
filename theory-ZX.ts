@@ -2,10 +2,10 @@
 
 export enum EDGETYPES { PLAIN }
 export enum VERTEXTYPES { Z, X, HADAMARD, WIRE, INPUT, OUTPUT }
-export interface IEdgeData {
+export interface IEdge {
     type: EDGETYPES
 }
-export interface IVertexData {
+export interface IVertex {
     type: VERTEXTYPES,
     label: string
 }
