@@ -35,7 +35,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
         }
         // Loop through vertices, act according the existing vertex.type data
         for (var vertex of this.targetDiagram.vertices) {
-            if (vertex.data && vertex.data.type) {
+            if (vertex.data) {
                 switch (vertex.data.type) {
                     case ZX.VERTEXTYPES.WIRE:
                         output.wire_vertices[vertex.id] = {

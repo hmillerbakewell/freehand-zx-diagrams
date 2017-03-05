@@ -45,7 +45,7 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             svg.size(500, 500)
             svg.clear()
             var s = ""
-
+            this.idToElement = {}
 
             // Edges
             for (var edge of this.targetDiagram.edges) {
@@ -97,12 +97,16 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
                         pathCommand += `${waypoints[i + 1].x} ${waypoints[i + 1].y} `
                     }
                     // waypoint last -> vertex end
-                    pathCommand += `L ${edge.end.pos.x} ${edge.end.pos.y} `
+                    pathCommand += `L ${edge.end.vertex.pos.x} ${edge.end.vertex.pos.y} `
 
                 }
                 svg.path(pathCommand)
                     .fill("transparent")
                     .stroke("black")
+                    .data("type", (<ZX.IEdgeData>edge.data).type)
+                    .data("id", edge.id)
+                    .click(this.clickedElement)
+                this.idToElement[edge.id] = edge
             }
             // Vertices
             var coloursDict: { [id: string]: string } = {}
@@ -115,15 +119,19 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
 
             for (var vertex of this.targetDiagram.vertices) {
                 if (vertex.data) {
-                    var vdata = <ZX.IVertex>vertex.data
+                    var vdata = <ZX.IVertexData>vertex.data
                     switch (vdata.type) {
                         case ZX.VERTEXTYPES.INPUT:
                         case ZX.VERTEXTYPES.OUTPUT:
                         case ZX.VERTEXTYPES.WIRE:
-                            var r = svg.rect(10, 10)
-                            r.x(vertex.pos.x)
-                            r.y(vertex.pos.y)
+                            var r = svg.rect(5, 5)
+                            r.x(vertex.pos.x - 2.5)
+                            r.y(vertex.pos.y - 2.5)
                             r.fill(coloursDict[vdata.type])
+                                .data("type", (<ZX.IVertexData>vertex.data).type)
+                                .data("id", vertex.id)
+                                .click(this.clickedElement)
+                            this.idToElement[vertex.id] = vertex
                             break;
 
                         case ZX.VERTEXTYPES.X:
@@ -132,12 +140,22 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
                             c.cx(vertex.pos.x)
                             c.cy(vertex.pos.y)
                             c.fill(coloursDict[vdata.type])
+                                .data("type", (<ZX.IVertexData>vertex.data).type)
+                                .data("id", vertex.id)
+                                .click(this.clickedElement)
+                                .stroke({ color: "black", width: 1 })
+                            this.idToElement[vertex.id] = vertex
                             break;
                         case ZX.VERTEXTYPES.HADAMARD:
                             var r = svg.rect(10, 10)
-                            r.x(vertex.pos.x)
-                            r.y(vertex.pos.y)
+                            r.x(vertex.pos.x - 5)
+                            r.y(vertex.pos.y - 5)
                             r.fill(coloursDict[vdata.type])
+                                .data("type", (<ZX.IVertexData>vertex.data).type)
+                                .data("id", vertex.id)
+                                .click(this.clickedElement)
+                                .stroke({ color: "black", width: 1 })
+                            this.idToElement[vertex.id] = vertex
                             break;
                     }
                 }
