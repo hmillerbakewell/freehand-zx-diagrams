@@ -148,7 +148,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             var r: (Diagrams.Edge | Diagrams.Vertex) // result
             if (itIsAnEdge) {
                 r = new Diagrams.Edge(start, end)
-                var edata: DiagramIO.IFreehandOnSVGEdge & ZX.IEdge = {
+                var edata: DiagramIO.IFreehandOnSVGEdge & ZX.IEdgeData = {
                     type: ZX.EDGETYPES.PLAIN,
                     RDPWaypoints: pathToPosnList(RDPWaypoints)
                 }
@@ -157,7 +157,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
                 var midpointX = interpolatedPath.bbox[0] + (interpolatedPath.bbox[2] / 2)
                 var midpointY = interpolatedPath.bbox[1] + (interpolatedPath.bbox[3] / 2)
                 r = new Diagrams.Vertex({ x: midpointX, y: midpointY })
-                var vdata: ZX.IVertex = {
+                var vdata: ZX.IVertexData = {
                     type: ZX.VERTEXTYPES.X,
                     label: ""
                 }
@@ -233,7 +233,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
                         // Claim closest valid vertex
                         var midpoint = [interpolate(0.5, gap1.pos.x, gap2.pos.x), interpolate(0.5, gap1.pos.y, gap2.pos.y)]
                         var vx = new Diagrams.Vertex({ x: midpoint[0], y: midpoint[1] })
-                        var wdata: ZX.IVertex = {
+                        var wdata: ZX.IVertexData = {
                             type: ZX.VERTEXTYPES.WIRE,
                             label: ""
                         }
@@ -246,7 +246,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             // If, at the end, no other vertexGaps were close, then create a new vertex.
             if (gap1.vertex === null) {
                 var vx = new Diagrams.Vertex(gap1.pos)
-                var vdata: ZX.IVertex = {
+                var vdata: ZX.IVertexData = {
                     type: ZX.VERTEXTYPES.INPUT,
                     label: ""
                 }
