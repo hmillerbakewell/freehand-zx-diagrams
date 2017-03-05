@@ -42,7 +42,7 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     toZXSVG() {
         if (this.SVG) {
             var svg = this.SVG
-            svg.size(500, 500)
+            svg.size(500, 500).style("border: 1px solid black")
             svg.clear()
             var s = ""
             this.idToElement = {}

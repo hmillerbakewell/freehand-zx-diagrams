@@ -158,7 +158,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
                 var midpointY = interpolatedPath.bbox[1] + (interpolatedPath.bbox[3] / 2)
                 r = new Diagrams.Vertex({ x: midpointX, y: midpointY })
                 var vdata: ZX.IVertexData = {
-                    type: ZX.VERTEXTYPES.X,
+                    type: ZX.VERTEXTYPES.Z,
                     label: ""
                 }
                 r.data = vdata
