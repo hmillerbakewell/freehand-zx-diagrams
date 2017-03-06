@@ -1,5 +1,53 @@
-div.IOHolder{
+body{
+    background-color: #FAFAFA;
+}
+
+.IOHolder{
     height: 600px;
     width: 600px;
-    float: left;
+float: left;
+  border: 1px solid #EEE;
+  background-color: #FAFAFA;
+  margin: 10px;
+}
+.IOHolder > .header{
+  height: 30px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+  line-height: 30px;
+}
+.IOHolder > .main{
+  min-height: 100%;
+  height: auto !important;
+  height: 100%;
+}
+.IOHolder > .main.hasLeftBar{
+  margin-left: 30px
+}
+.IOHolder > .main.hasRightBar{
+  margin-right: 30px
+}
+.IOHolder > .main.hasFooter{
+  margin-bottom: 30px
+}
+
+
+.IOHolder > .main > * {
+    background: white;
+    border: 1px solid black;
+    width: 550px;
+    height: 550px;
+    margin: auto;
+    display: block;
+}
+
+.IOHolder > .main > textArea {
+    resize: none;
+}
+
+.preformatted{
+    font-family: monospace;
+    white-space: pre;
 }

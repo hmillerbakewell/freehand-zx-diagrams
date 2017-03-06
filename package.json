@@ -6,13 +6,13 @@
   "dependencies": {
     "@types/node": "^7.0.5",
     "jquery": "^3.1.1",
+    "normalize.css": "^5.0.0",
     "path-interpolate": "file:./local_node/path-interpolate-1.0.1.tgz",
     "shortid": "^2.2.6",
     "svgjs": "^2.4.0",
     "typescript": "^2.2.1"
   },
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

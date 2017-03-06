@@ -47,8 +47,8 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
 
 
     createSVG: (selector: string) => void = (selector: string) => {
-        this.svgElement = SVG(selector).style("border: 1px solid black")
-        this.svgElement.size(500, 500).viewbox(); // TODO viewbox
+        this.svgElement = SVG(selector)
+        this.svgElement.viewbox({x: 0, y:0, width: 100, height: 100}); // TODO viewbox
 
         // Mouse events
         this.svgElement.mousedown(this.mousedown);

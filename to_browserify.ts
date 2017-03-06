@@ -15,9 +15,13 @@ var zxSVG = new ZXSVGIOModule.ZXSVGIOModule(D)
 var diagramsJSON = new DiagramsJSONModule.DiagramsJSONIOModule(D)
 
 $(document).ready(function () {
+    //zx-drawing
     freehandOnSVG.createSVG('svgInputHolder')
-    zxJSON.UISelector = "#textZXJSONOutputHolder"
+    //zx-JSON
+    zxJSON.UISelector = "#ZXJSONIOModule > .main > #JSON"
+    //zx-SVG
     zxSVG.SVG = SVG("svgOutputHolder")
     zxSVG.toZXSVG()
-    diagramsJSON.UISelector = "#textDiagramsJSONOutputHolder"
+    //diagrams-JSON
+    diagramsJSON.UISelector = "#DiagramsJSONIOModule > .main > #JSON"
 })

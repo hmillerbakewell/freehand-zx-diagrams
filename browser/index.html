@@ -1,22 +1,37 @@
 <head>
     <meta charset="UTF8" />
     <script src="./browser.js"></script>
+    <link rel="stylesheet" type="text/css" href="normalize.css">
     <link rel="stylesheet" type="text/css" href="basic.css">
 </head>
 
 <body>
     <div id="inputDrawingPanel" class="IOHolder">
-        Draw inside this box:
-        <div id="svgInputHolder"></div>
+        <div class="header">
+            <span>Draw inside this box:</span>
+        </div>
+        <div id="svgInputHolder" class="main"></div>
     </div>
     <div id="outputDrawingPanel" class="IOHolder">
-        SVG render of the graph:
-        <div id="svgOutputHolder"></div>
+        <div class="header">
+            <span>SVG render of the graph:</span>
+        </div>
+        <div id="svgOutputHolder" class="main"></div>
     </div>
-    <div id="outputTextPanel" class="IOHolder">
-        JSON output for Quantomatic:
-        <pre id="textZXJSONOutputHolder"></pre>
-        JSON output of underlying graph:
-        <pre id="textDiagramsJSONOutputHolder"></pre>
+    <div id="DiagramsJSONIOModule" class="IOHolder">
+        <div class="header">
+            <span>JSON output of underlying graph:</span>
+        </div>
+        <div class="main">
+            <textarea id="JSON"></textarea>
+        </div>
+    </div>
+    <div id="ZXJSONIOModule" class="IOHolder">
+        <div class="header">
+            <span>JSON output for Quantomatic:</span>
+        </div>
+        <div class="main">
+            <pre id="JSON" class="main"></pre>
+        </div>
     </div>
 </body>
