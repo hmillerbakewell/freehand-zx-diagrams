@@ -10,7 +10,18 @@ export class DiagramsJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
         this.upstreamChange = this.onDiagramChange
         this.targetDiagram.subscribe(this)
     }
-    onDiagramChange() {
-        $(this.UISelector).html(this._targetDiagram.toString())
+    onDiagramChange: () => void = () => {
+        $(this.UISelector).val(this._targetDiagram.toString())
+    }
+    onJSONChange: () => void = () => {
+        var parsed: Diagrams.Diagram;
+        try {
+            parsed = JSON.parse($(this.UISelector).val())
+        } catch (e) {
+            // TODO flag when JSON is invalid
+        }
+        if (parsed) {
+            this.targetDiagram.importRewriteDiagram(parsed)
+        }
     }
 }

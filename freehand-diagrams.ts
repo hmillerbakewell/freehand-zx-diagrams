@@ -3,13 +3,10 @@ import shortid = require("shortid")
 
 shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£')
 export abstract class uID {
-  protected _id: string
+  id: string
   constructor() {
-    this._id = shortid.generate()
+    this.id = shortid.generate()
     //idLookup[this.id] = this
-  }
-  get id() {
-    return this._id
   }
 }
 
@@ -133,10 +130,10 @@ export class Diagram extends TypedId implements IDiagramInput {
     this.edges = []
     this.vertices = []
     for (var edge of diagram.edges) {
-      this.edges.push(edge)
+      this.importEdge(edge)
     }
     for (var vertex of diagram.vertices) {
-      this.vertices.push(vertex)
+      this.importVertex(vertex)
     }
     this.fireChange()
   }

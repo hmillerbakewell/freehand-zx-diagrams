@@ -19,9 +19,12 @@ $(document).ready(function () {
     freehandOnSVG.createSVG('svgInputHolder')
     //zx-JSON
     zxJSON.UISelector = "#ZXJSONIOModule > .main > #JSON"
+    $(zxJSON.UISelector).change(zxJSON.onJSONChange)
     //zx-SVG
     zxSVG.SVG = SVG("svgOutputHolder")
     zxSVG.toZXSVG()
     //diagrams-JSON
     diagramsJSON.UISelector = "#DiagramsJSONIOModule > .main > #JSON"
+    $(diagramsJSON.UISelector).change(diagramsJSON.onJSONChange)
+    D.fireChange()
 })
