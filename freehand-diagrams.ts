@@ -144,6 +144,10 @@ export class Diagram extends TypedId implements IDiagramInput {
   vertices: Vertex[] = []
 
   toString: () => string = () => {
-    return JSON.stringify(this)
+    var dummyDiagram = {
+      edges: this.edges,
+      vertices: this.vertices
+    }
+    return JSON.stringify(dummyDiagram, undefined, 2)
   }
 }

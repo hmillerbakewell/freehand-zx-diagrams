@@ -134,7 +134,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             .replace(/[\s,]+/g, ' ')
             .trim()
         var interpolatedPath = pathInterpolate(pathAsString, Diagrams._diagramOptions.interpolationDistance)
-        var RDPWaypoints = RDP.RamerDouglasPeucker(interpolatedPath.waypoints, 20).concat([interpolatedPath.end])
+        var RDPWaypoints = RDP.RamerDouglasPeucker(interpolatedPath.waypoints, 10).concat([interpolatedPath.end])
         if (interpolatedPath.length > 10) {
 
             var pathAsPositions = pathToPosnList(RDPWaypoints)
