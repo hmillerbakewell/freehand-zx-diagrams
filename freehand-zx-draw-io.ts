@@ -6,11 +6,15 @@ import DiagramIO = require("./freehand-io.js")
 import RDP = require("./RamerDouglasPeucker.js")
 import ZX = require("./theory-ZX.js")
 
+interface IVertexDataInferred {
+    inferred: boolean
+}
+
 export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     takeInput: boolean
     currentPath: string
-    paths: string[]
-    accuracyScale: number
+    paths: string[] = []
+    accuracyScale: number = 1
     svgElement: SVG.Container
     lastTimeTriggered: number
     mousePos: SVG.Point
@@ -48,7 +52,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
 
     createSVG: (selector: string) => void = (selector: string) => {
         this.svgElement = SVG(selector)
-        this.svgElement.viewbox({x: 0, y:0, width: 100, height: 100}); // TODO viewbox
+        this.svgElement.viewbox({ x: 0, y: 0, width: 500, height: 500 });
 
         // Mouse events
         this.svgElement.mousedown(this.mousedown);
@@ -72,13 +76,11 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         this.takeInput = false
         this.currentPath = ""
         this.paths = []
-        this.accuracyScale = 1
+        this.accuracyScale = 10
         this.svgElement = null
         this.lastTimeTriggered = (new Date()).getMilliseconds()
         this.mousePos = new SVG.Point(0, 0)
         this.virtualDiagram = new Diagrams.Diagram()
-        this.inferredVertices = []
-        this.unpluggedVertexGaps = []
     }
     addPoint: (x: number, y: number) => void = (x: number, y: number) => {
         this.lastTimeTriggered = (new Date()).getMilliseconds()
@@ -106,34 +108,38 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         this.drawAllShapes();
         // Update the private virtual diagram
         if (this.virtualDiagram) {
-            var pathAsObj = this.pathToObject(s)
-            if (pathAsObj !== null) {
-                if (pathAsObj.type === "Edge") {
-                    this.virtualDiagram.importEdge(<Diagrams.Edge>pathAsObj)
-                } else if (pathAsObj.type === "Vertex") {
-                    this.virtualDiagram.importVertex(<Diagrams.Vertex>pathAsObj)
-                }
-            }
+            this.importPathAsObject(s)
         }
         // Try and tie up loose edges, etc. in the virtual diagram
-        this.fillVertexGaps()
+        this.mergeNearbyVertices()
 
         // Create another dummy diagram
         // This is the one we will send off
-        var packageDiagram = new Diagrams.Diagram()
-        packageDiagram.importRewriteDiagram(this.virtualDiagram)
-        for (var i = 0; i < this.inferredVertices.length; i++) {
-            packageDiagram.importVertex(this.inferredVertices[i])
+        var packetDiagram = new Diagrams.Diagram()
+        // Add all the uninferred vertices
+        for (let vertex of this.virtualDiagram.vertices) {
+            if (!(<IVertexDataInferred>vertex.data).inferred) {
+                packetDiagram.importVertex(vertex)
+            }
         }
-        this.inferredVertices = []
-        this._targetDiagram.importRewriteDiagram(packageDiagram)
+        for (let edge of this.virtualDiagram.edges) {
+            packetDiagram.importEdge(edge)
+            // Add any vertices the edge is joined to
+            if (!packetDiagram.vertexByID[edge.start]) {
+                packetDiagram.importVertex(this.virtualDiagram.vertexByID[edge.start])
+            }
+            if (!packetDiagram.vertexByID[edge.end]) {
+                packetDiagram.importVertex(this.virtualDiagram.vertexByID[edge.end])
+            }
+        }
+        this._targetDiagram.importRewriteDiagram(packetDiagram)
     }
-    pathToObject: (pathAsString: string) => (Diagrams.Edge | Diagrams.Vertex | null) = (pathAsString: string) => {
+    importPathAsObject: (pathAsString: string) => (Diagrams.Edge | Diagrams.Vertex | null) = (pathAsString: string) => {
         pathAsString = pathAsString
             .replace(/[a-zA-Z]/g, '')
             .replace(/[\s,]+/g, ' ')
             .trim()
-        var interpolatedPath = pathInterpolate(pathAsString, Diagrams._diagramOptions.interpolationDistance)
+        var interpolatedPath = pathInterpolate(pathAsString, 10)
         var RDPWaypoints = RDP.RamerDouglasPeucker(interpolatedPath.waypoints, 10).concat([interpolatedPath.end])
         if (interpolatedPath.length > 10) {
 
@@ -147,26 +153,37 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             }
             var r: (Diagrams.Edge | Diagrams.Vertex) // result
             if (itIsAnEdge) {
-                r = new Diagrams.Edge(start, end)
-                var edata: DiagramIO.IFreehandOnSVGEdge & ZX.IEdgeData = {
+                var vStart = new Diagrams.Vertex(start)
+                vStart.data = <IVertexDataInferred>{ inferred: true }
+                this.virtualDiagram.importVertex(vStart)
+                var vEnd = new Diagrams.Vertex(end)
+                vEnd.data = <IVertexDataInferred>{ inferred: true }
+                this.virtualDiagram.importVertex(vEnd)
+
+                r = new Diagrams.Edge(vStart, vEnd)
+                r.data = <DiagramIO.IFreehandOnSVGEdge & ZX.IEdgeData>{
                     type: ZX.EDGETYPES.PLAIN,
                     RDPWaypoints: pathToPosnList(RDPWaypoints)
                 }
-                r.data = edata
+                this.virtualDiagram.importEdge(r)
             } else {
                 var midpointX = interpolatedPath.bbox[0] + (interpolatedPath.bbox[2] / 2)
                 var midpointY = interpolatedPath.bbox[1] + (interpolatedPath.bbox[3] / 2)
                 r = new Diagrams.Vertex({ x: midpointX, y: midpointY })
-                var vdata: ZX.IVertexData = {
+                r.data = <ZX.IVertexData>{
                     type: ZX.VERTEXTYPES.Z,
                     label: ""
                 }
-                r.data = vdata
+                this.virtualDiagram.importVertex(r)
             }
             return r
         } else {
             return null
         }
+    }
+    onDiagramChange = () => {
+        this.paths = []
+        //this.virtualDiagram.importRewriteDiagram(this._targetDiagram)
     }
     drawAllShapes = () => {
         var svg = this.svgElement;
@@ -180,84 +197,92 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     }
 
     // Joining edges and vertices
-
-    inferredVertices: Diagrams.Vertex[]
-    private unpluggedVertexGaps: Diagrams.VertexGap[]
-    private refreshGapList() {
-        this.unpluggedVertexGaps = []
-        for (var edge of this.virtualDiagram.edges) {
-            if (edge.start.vertex === null) {
-                this.unpluggedVertexGaps.push(edge.start)
-            }
-            if (edge.end.vertex === null) {
-                this.unpluggedVertexGaps.push(edge.end)
-            }
-        }
-    }
-    private emptyVertexGaps() {
-        for (var gap of this.unpluggedVertexGaps) {
-            gap.vertex = null
-        }
-        this.inferredVertices = []
-    }
-    private fillVertexGaps() {
+    private mergeNearbyVertices() {
         //First get list of vertexGaps
-        this.emptyVertexGaps()
-        this.refreshGapList()
         // For each vertexGap compare distances to each vertex
-        for (var gap of this.unpluggedVertexGaps) {
-            var closestDist = Math.pow(this.closingEdgeVertexDistance, 2) + 1
-            var dist = 0
-            for (var vx of this.virtualDiagram.vertices) {
-                dist = Diagrams.posnDistanceSquared(gap.pos, vx.pos)
+        var inferredVertices: Diagrams.Vertex[] = []
+        var fixedVertices: Diagrams.Vertex[] = []
+        var vertexPositions: { [id: string]: Diagrams.IDiagramPosition } = {}
+        for (let vertex of this.virtualDiagram.vertices) {
+            if (vertex.data.inferred) {
+                inferredVertices.push(vertex)
+            } else {
+                fixedVertices.push(vertex)
+            }
+            vertexPositions[vertex.id] = vertex.pos
+        }
+
+        var swapEdgeVertex = function (D: Diagrams.Diagram, oldVertex: Diagrams.Vertex, newVertex: Diagrams.Vertex) {
+            for (let edge of D.edges) {
+                if (edge.start === oldVertex.id) {
+                    edge.start = newVertex.id
+                }
+                if (edge.end === oldVertex.id) {
+                    edge.end = newVertex.id
+                }
+            }
+        }
+        // Try and join any inferred vertex to a close fixed vertex
+        for (let infVertex of inferredVertices) {
+            let closestDist = Math.pow(this.closingEdgeVertexDistance, 2) + 1
+            let closestFixedVertex: (Diagrams.Vertex | null) = null
+            let dist = 0
+            for (let fixVertex of fixedVertices) {
+                dist = Diagrams.posnDistanceSquared(infVertex.pos, fixVertex.pos)
                 if (dist < closestDist) {
                     closestDist = dist
-                    // Claim closest valid vertex
-                    gap.vertex = vx
+                    // Claim closest fixed vertex
+                    closestFixedVertex = fixVertex
                 }
+            }
+            if (closestFixedVertex) {
+                swapEdgeVertex(this.virtualDiagram, infVertex, closestFixedVertex)
             }
         }
-        this.refreshGapList()
-        dist = 0
-        // For each remaining vertexGap, compare to other vertexGaps
-        for (var i = 0; i < this.unpluggedVertexGaps.length; i++) {
-            var closestDist = Math.pow(this.closingEdgeEdgeDistance, 2) + 1
-            var gap1 = this.unpluggedVertexGaps[i]
-            for (var j = i + 1; j < this.unpluggedVertexGaps.length; j++) {
-                var gap2 = this.unpluggedVertexGaps[j]
-                // Check they are not already filled
-                if (gap1.vertex === null && gap2.vertex === null) {
-                    dist = Diagrams.posnDistanceSquared(gap1.pos, gap2.pos)
-                    if (dist < closestDist) {
-                        closestDist = dist
-                        // Claim closest valid vertex
-                        var midpoint = [interpolate(0.5, gap1.pos.x, gap2.pos.x), interpolate(0.5, gap1.pos.y, gap2.pos.y)]
-                        var vx = new Diagrams.Vertex({ x: midpoint[0], y: midpoint[1] })
-                        var wdata: ZX.IVertexData = {
-                            type: ZX.VERTEXTYPES.WIRE,
-                            label: ""
-                        }
-                        this.inferredVertices.push(vx)
-                        gap1.vertex = vx
-                        gap2.vertex = vx
-                    }
+
+        // Try and join any inferred vertex to another inferred vertex
+        for (var i = 0; i < inferredVertices.length; i++) {
+            let infVertex1 = inferredVertices[i]
+            let closestDist = Math.pow(this.closingEdgeEdgeDistance, 2) + 1
+            let dist = 0
+            let closestInfVertex: (Diagrams.Vertex | null) = null
+            for (var j = i + 1; j < inferredVertices.length; j++) {
+                let infVertex2 = inferredVertices[j]
+                dist = Diagrams.posnDistanceSquared(infVertex1.pos, infVertex2.pos)
+                if (dist < closestDist) {
+                    closestDist = dist
+                    // Claim closest fixed vertex
+                    closestInfVertex = infVertex2
                 }
             }
-            // If, at the end, no other vertexGaps were close, then create a new vertex.
-            if (gap1.vertex === null) {
-                var vx = new Diagrams.Vertex(gap1.pos)
-                var vdata: ZX.IVertexData = {
+            if (closestInfVertex) {
+                // create a single vertex in the middle
+
+                let midpoint = [interpolate(0.5, infVertex1.pos.x, closestInfVertex.pos.x),
+                interpolate(0.5, infVertex1.pos.y, closestInfVertex.pos.y)]
+                let vx = new Diagrams.Vertex({ x: midpoint[0], y: midpoint[1] })
+                vx.data = <ZX.IVertexData>{
+                    type: ZX.VERTEXTYPES.WIRE,
+                    label: "",
+                    inferred: true
+                }
+                this.virtualDiagram.importVertex(vx)
+                swapEdgeVertex(this.virtualDiagram, closestInfVertex, vx)
+                swapEdgeVertex(this.virtualDiagram, infVertex1, vx)
+            } else {
+                // create a wire vertex to join to
+                let vx = new Diagrams.Vertex(infVertex1.pos)
+                vx.data = <ZX.IVertexData>{
                     type: ZX.VERTEXTYPES.INPUT,
-                    label: ""
+                    label: "",
+                    inferred: true
                 }
-                vx.data = vdata
-                gap1.vertex = vx
-                this.inferredVertices.push(vx)
+                this.virtualDiagram.importVertex(vx)
+                swapEdgeVertex(this.virtualDiagram, infVertex1, vx)
             }
         }
+
     }
-
-
 
 
 }

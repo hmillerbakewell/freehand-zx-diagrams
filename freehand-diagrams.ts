@@ -12,18 +12,6 @@ export abstract class uID {
 
 //export var idLookup: { [id: string]: any } = []
 
-export class DiagramOptions {
-  interpolationDistance: number
-  closingEdgeLoopDistance: number
-  closingEdgeVertexDistance: number
-  closingEdgeEdgeDistance: number
-}
-export let _diagramOptions = new DiagramOptions()
-_diagramOptions.interpolationDistance = 10
-_diagramOptions.closingEdgeLoopDistance = 20
-_diagramOptions.closingEdgeVertexDistance = 20
-_diagramOptions.closingEdgeEdgeDistance = 20
-
 export abstract class TypedId extends uID {
   protected _type: string
   constructor() {
@@ -59,35 +47,18 @@ export class Vertex extends TypedId {
 }
 
 export class Edge extends TypedId {
-  start: VertexGap
-  end: VertexGap
+  start: string
+  end: string
   data: any
-  constructor(start: IDiagramPosition, end: IDiagramPosition) {
+  constructor(start: Vertex, end: Vertex) {
     super()
-    this.start = new VertexGap(start)
-    this.end = new VertexGap(end)
+    this.start = start.id
+    this.end = end.id
     this.data = {}
     this._type = "Edge"
   }
 }
 
-export class VertexGap extends TypedId {
-  vertex: Vertex | null
-  _pos: IDiagramPosition
-  constructor(pos: IDiagramPosition) {
-    super()
-    this._pos = pos
-    this._type = "VertexGap"
-    this.vertex = null
-  }
-  get pos() {
-    if (this.vertex) {
-      return this.vertex.pos
-    } else {
-      return this._pos
-    }
-  }
-}
 
 export interface IDiagramInput {
   importEdge: (edge: Edge) => void
@@ -105,6 +76,7 @@ export interface IUpstreamListener {
  */
 export class Diagram extends TypedId implements IDiagramInput {
 
+  vertexByID: { [id: string]: Vertex } = {}
   // Event handling
 
   private listeners: (IUpstreamListener)[] = []
@@ -119,21 +91,29 @@ export class Diagram extends TypedId implements IDiagramInput {
 
   // Importing
   importEdge: (edge: Edge) => void = (edge: Edge) => {
-    this.edges.push(edge)
+    this.importEdgeDontFire(edge)
     this.fireChange()
   }
+  private importEdgeDontFire: (edge: Edge) => void = (edge: Edge) => {
+    this.edges.push(edge)
+  }
   importVertex: (vertex: Vertex) => void = (vertex: Vertex) => {
-    this.vertices.push(vertex)
+    this.importVertexDontFire(vertex)
     this.fireChange()
+  }
+  private importVertexDontFire: (vertex: Vertex) => void = (vertex: Vertex) => {
+    this.vertices.push(vertex)
+    this.vertexByID[vertex.id] = vertex
   }
   importRewriteDiagram: (diagram: Diagram) => void = (diagram: Diagram) => {
     this.edges = []
     this.vertices = []
+    this.vertexByID = {}
     for (var edge of diagram.edges) {
-      this.importEdge(edge)
+      this.importEdgeDontFire(edge)
     }
     for (var vertex of diagram.vertices) {
-      this.importVertex(vertex)
+      this.importVertexDontFire(vertex)
     }
     this.fireChange()
   }

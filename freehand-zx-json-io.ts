@@ -79,7 +79,10 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                 let sourceVertexPos = vertexPosLookup[edge.src]
                 let targetVertexPos = vertexPosLookup[edge.tgt]
 
-                let dummyEdge = new Diagrams.Edge(sourceVertexPos, targetVertexPos)
+                let sourceVertex = new Diagrams.Vertex(sourceVertexPos)
+                let targetVertex = new Diagrams.Vertex(targetVertexPos)
+
+                let dummyEdge = new Diagrams.Edge(sourceVertex, targetVertex)
                 dummyEdge.id = edgeName
                 dummyDiagram.importEdge(dummyEdge)
             }
@@ -143,8 +146,8 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
         // Then edges
         for (var edge of this.targetDiagram.edges) {
             output.undir_edges[edge.id] = {
-                src: edge.start.vertex.id,
-                tgt: edge.end.vertex.id
+                src: edge.start,
+                tgt: edge.end
             }
         }
         return JSON.stringify(output)

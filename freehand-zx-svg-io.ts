@@ -49,8 +49,10 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
 
             // Edges
             for (var edge of this.targetDiagram.edges) {
+                let startPos = this.targetDiagram.vertexByID[edge.start].pos
+                let endPos = this.targetDiagram.vertexByID[edge.end].pos
                 var pathCommand = ""
-                pathCommand += `M${edge.start.vertex.pos.x} ${edge.start.vertex.pos.y} `
+                pathCommand += `M${startPos.x} ${startPos.y} `
                 if ((<DiagramIO.IFreehandOnSVGEdge>edge.data).RDPWaypoints) {
                     var smoothingFactor = 20
                     var tangents: Diagrams.IDiagramPosition[] = []
@@ -74,14 +76,14 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
                     var waypoints = (<DiagramIO.IFreehandOnSVGEdge>edge.data).RDPWaypoints
                     // Calculate tangents:
                     // vertex start -> waypoint 0
-                    normaliseAndPushToTangents(waypoints[0].x - edge.start.pos.x, waypoints[0].y - edge.start.pos.y)
+                    normaliseAndPushToTangents(waypoints[0].x - startPos.x, waypoints[0].y - startPos.y)
                     // waypoint i -> waypoint i+1
 
                     for (var i = 1; i < waypoints.length - 1; i++) {
                         normaliseAndPushToTangents(waypoints[i + 1].x - waypoints[i - 1].x, waypoints[i + 1].y - waypoints[i - 1].y)
                     }
                     // waypoint last -> vertex end
-                    normaliseAndPushToTangents(edge.end.pos.x - waypoints[i].x, edge.end.pos.y - waypoints[i].y)
+                    normaliseAndPushToTangents(endPos.x - waypoints[i].x, endPos.y - waypoints[i].y)
 
                     //Calculate path data:
                     // vertex start -> waypoint 0
@@ -97,7 +99,7 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
                         pathCommand += `${waypoints[i + 1].x} ${waypoints[i + 1].y} `
                     }
                     // waypoint last -> vertex end
-                    pathCommand += `L ${edge.end.vertex.pos.x} ${edge.end.vertex.pos.y} `
+                    pathCommand += `L ${endPos.x} ${endPos.y} `
 
                 }
                 svg.path(pathCommand)
