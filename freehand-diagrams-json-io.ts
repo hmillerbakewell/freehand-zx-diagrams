@@ -4,14 +4,14 @@ import $ = require("jquery")
 import DiagramIO = require("./freehand-io.js")
 
 export class DiagramsJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
-    targetDiagram: Diagrams.Diagram
-    constructor(targetDiagram: Diagrams.Diagram) {
-        super(targetDiagram)
+    constructor(downstreamDiagram: Diagrams.IDiagramInput,
+        upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller) {
+        super(downstreamDiagram, upstreamDiagram)
         this.upstreamChange = this.onDiagramChange
-        this.targetDiagram.subscribe(this)
+        this.upstreamDiagram.subscribe(this)
     }
-    onDiagramChange: () => void = () => {
-        $(this.UISelector).val(this._targetDiagram.toString())
+    private onDiagramChange: () => void = () => {
+        $(this.UISelector).val(this.upstreamDiagram.toJSON())
     }
     onJSONChange: () => void = () => {
         var parsed: Diagrams.Diagram;
@@ -21,7 +21,7 @@ export class DiagramsJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
             // TODO flag when JSON is invalid
         }
         if (parsed) {
-            this.targetDiagram.importRewriteDiagram(parsed)
+            this.downstreamDiagram.importRewriteDiagram(parsed)
         }
     }
 }
