@@ -9,10 +9,10 @@ import DiagramsJSONModule = require("./freehand-diagrams-json-io.js")
 var D = new Diagrams.Diagram();
 $(document).ready();
 
-var freehandOnSVG = new FreehandOnSVGIOModule.FreehandOnSVGIOModule(D)
-var zxJSON = new ZXJSONIOModule.ZXJSONIOModule(D)
-var zxSVG = new ZXSVGIOModule.ZXSVGIOModule(D)
-var diagramsJSON = new DiagramsJSONModule.DiagramsJSONIOModule(D)
+var freehandOnSVG = new FreehandOnSVGIOModule.FreehandOnSVGIOModule(D, D)
+var zxJSON = new ZXJSONIOModule.ZXJSONIOModule(D, D)
+var zxSVG = new ZXSVGIOModule.ZXSVGIOModule(D, D)
+var diagramsJSON = new DiagramsJSONModule.DiagramsJSONIOModule(D, D)
 
 $(document).ready(function () {
     //zx-drawing
