@@ -66,7 +66,15 @@ export interface IDiagramInput {
   importRewriteDiagram: (diagram: Diagram) => void
   fireChange: () => void
 }
-export interface IUpstreamListener {
+export interface IDiagramOutput {
+  edges: Edge[]
+  vertices: Vertex[]
+  toJSON: () => string
+}
+export interface IStreamCaller {
+  subscribe: (handler: IStreamListener) => void
+}
+export interface IStreamListener {
   upstreamChange: () => void
 }
 
@@ -74,13 +82,13 @@ export interface IUpstreamListener {
  * Innermost Diagram object
  * Has edges, vertices, ways to import them and events
  */
-export class Diagram extends TypedId implements IDiagramInput {
-
-  vertexByID: { [id: string]: Vertex } = {}
+export class Diagram
+  extends TypedId
+  implements IDiagramInput, IDiagramOutput, IStreamCaller {
   // Event handling
 
-  private listeners: (IUpstreamListener)[] = []
-  subscribe: (handler: IUpstreamListener) => void = (handler) => {
+  private listeners: (IStreamListener)[] = []
+  subscribe: (handler: IStreamListener) => void = (handler) => {
     this.listeners.push(handler)
   }
   fireChange: () => void = () => {

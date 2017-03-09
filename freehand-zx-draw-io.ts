@@ -71,16 +71,18 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     }
 
 
-    constructor(targetDiagram: Diagrams.IDiagramInput) {
-        super(targetDiagram)
-        this.takeInput = false
-        this.currentPath = ""
-        this.paths = []
-        this.accuracyScale = 10
-        this.svgElement = null
-        this.lastTimeTriggered = (new Date()).getMilliseconds()
-        this.mousePos = new SVG.Point(0, 0)
-        this.virtualDiagram = new Diagrams.Diagram()
+  constructor(downstreamDiagram: Diagrams.IDiagramInput,
+    upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller) {
+    super(downstreamDiagram, upstreamDiagram)
+    //this.upstreamDiagram.subscribe(this)
+    this.takeInput = false
+    this.currentPath = ""
+    this.paths = []
+    this.svgElement = null
+    this.lastTimeTriggered = (new Date()).getMilliseconds()
+    this.mousePos = new SVG.Point(0, 0)
+    this.virtualDiagram = new Diagrams.Diagram()
+  }
     }
     addPoint: (x: number, y: number) => void = (x: number, y: number) => {
         this.lastTimeTriggered = (new Date()).getMilliseconds()

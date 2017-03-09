@@ -6,11 +6,13 @@ import DiagramIO = require("./freehand-io.js")
 import ZX = require("./theory-ZX.js")
 
 export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
-    targetDiagram: Diagrams.Diagram
-    constructor(targetDiagram: Diagrams.Diagram) {
-        super(targetDiagram)
-        this.upstreamChange = this.onDiagramChange
-        this.targetDiagram.subscribe(this)
+  constructor(
+    upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller,
+    downstreamDiagram: Diagrams.IDiagramInput) {
+    super(downstreamDiagram, upstreamDiagram)
+    this.upstreamChange = this.onDiagramChange
+    this.upstreamDiagram.subscribe(this)
+  }
     }
     onDiagramChange() {
         this.toZXSVG()

@@ -27,14 +27,17 @@ quantoEdgeLabels[ZX.EDGETYPES.PLAIN] = ""
 
 
 export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
-    targetDiagram: Diagrams.Diagram
-    constructor(targetDiagram: Diagrams.Diagram) {
-        super(targetDiagram)
+    constructor(
+        upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller,
+        downstreamDiagram: Diagrams.IDiagramInput) {
+        super(downstreamDiagram, upstreamDiagram)
         this.upstreamChange = this.onDiagramChange
-        this.targetDiagram.subscribe(this)
+        this.upstreamDiagram.subscribe(this)
     }
     onDiagramChange() {
-        $(this.UISelector).html(JSON.stringify(JSON.parse(this.toSimpleZXGraph()), undefined, 2))
+        $(this.UISelector).html(
+            JSON.stringify(JSON.parse(this.toSimpleZXGraph()), undefined, 2)
+        )
     }
     onJSONChange: () => void = () => {
         var parsed: any
