@@ -6,15 +6,13 @@ import DiagramIO = require("./freehand-io.js")
 import ZX = require("./theory-ZX.js")
 
 export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
-  constructor(
-    upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller,
-    downstreamDiagram: Diagrams.IDiagramInput) {
-    super(downstreamDiagram, upstreamDiagram)
-    this.upstreamChange = this.onDiagramChange
-    this.upstreamDiagram.subscribe(this)
+  constructor() {
+    super()
   }
-  onDiagramChange() {
-    this.toZXSVG()
+  importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
+  = (diagram) => {
+    this.toZXSVG(diagram)
+    this.outputDiagram.importRewriteDiagram(diagram)
   }
   clickedElement: (e: MouseEvent) => void = (e) => {
     e.preventDefault()
@@ -32,7 +30,7 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         } else if (dv.type === ZX.VERTEXTYPES.HADAMARD) {
           dv.type = ZX.VERTEXTYPES.Z
         }
-        this.downstreamDiagram.fireChange()
+        this.outputDiagram.fireChange()
       } else if (ele.type === "Edge") {
 
       }
@@ -40,9 +38,10 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   }
   idToElement: { [index: string]: (Diagrams.Vertex | Diagrams.Edge) } = {}
   SVG: SVG.Container
-  toZXSVG() {
+  toZXSVG: (diagram: Diagrams.IDiagramOutput) => void
+  = (diagram) => {
     this.idToElement = ZXToSVG(
-      this.upstreamDiagram,
+      diagram,
       this.SVG,
       this.clickedElement)
   }

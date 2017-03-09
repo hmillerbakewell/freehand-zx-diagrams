@@ -3,32 +3,42 @@ import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
 import $ = require("jquery")
 
-export class DiagramIOHTMLModule
-    implements Diagrams.IDiagramInput, Diagrams.IStreamListener {
+
+export class DiagramIOModule implements
+    Diagrams.IDiagramInput {
+    importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
+    outputDiagram: Diagrams.Diagram
+    constructor() {
+        this.outputDiagram = new Diagrams.Diagram()
+    }
+}
+
+export class IOPipe implements Diagrams.IStreamListener {
     private _upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller
     private _downstreamDiagram: Diagrams.IDiagramInput
-    get upstreamDiagram() {
-        return this._upstreamDiagram
-    }
     get downstreamDiagram() {
         return this._downstreamDiagram
     }
-    UISelector: string
-    importEdge: (edge: Diagrams.Edge) => void
-    importVertex: (vertex: Diagrams.Vertex) => void
-    importRewriteDiagram: (diagram: Diagrams.Diagram) => void
-    fireChange = () => {
-        this.downstreamDiagram.fireChange()
+    get upstreamDiagram() {
+        return this._upstreamDiagram
     }
-    upstreamChange: () => void
-    constructor(downstreamDiagram: Diagrams.IDiagramInput,
-        upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller) {
-        this._upstreamDiagram = upstreamDiagram
-        this._downstreamDiagram = downstreamDiagram
-        this.upstreamChange = function () {
-            console.log("This element has subscribed to upstream changes,"
-                + "but not implemented a handler.")
-        }
+    constructor(upstream: Diagrams.IDiagramOutput & Diagrams.IStreamCaller,
+        downstream: Diagrams.IDiagramInput) {
+        this._upstreamDiagram = upstream
+        this._downstreamDiagram = downstream
+        this._upstreamDiagram.subscribe(this)
+    }
+    upstreamChange: (diagram: Diagrams.IDiagramOutput) => void
+    = (diagram) => {
+        this.downstreamDiagram.importRewriteDiagram(diagram)
+    }
+}
+
+export class DiagramIOHTMLModule
+    extends DiagramIOModule {
+    UISelector: string
+    constructor() {
+        super()
     }
 }
 
@@ -36,4 +46,44 @@ export class DiagramIOHTMLModule
 export interface IFreehandOnSVGEdge {
     RDPWaypoints: Diagrams.IDiagramPosition[],
     originalPath?: string
+}
+
+export class DiagramWithStreamchange
+    extends Diagrams.Diagram
+    implements Diagrams.IStreamListener {
+    upstreamChange: (diagram: Diagrams.IDiagramOutput) => void
+    = (diagram) => {
+        if (!this.allowAny) {
+            if (this.lastChange !== diagram.toJSON()) {
+                this.importRewriteDiagram(diagram)
+            }
+        }
+    }
+    allowAny: boolean = false
+    lastChange: string
+}
+
+export class BlockOwnChangesIO implements Diagrams.IStreamListener {
+
+    get allowAllDiagram() {
+        return this._allowAllDiagram
+    }
+    get blockSomeDiagram() {
+        return this._blockSomeDiagram
+    }
+
+    upstreamChange: (diagram: Diagrams.IDiagramOutput) => void
+    = (diagram) => {
+        this.blockSomeDiagram.lastChange = diagram.toJSON()
+        this.allowAllDiagram.lastChange = diagram.toJSON()
+    }
+
+    private _blockSomeDiagram: DiagramWithStreamchange
+    private _allowAllDiagram: DiagramWithStreamchange
+
+    constructor() {
+        this._blockSomeDiagram = new DiagramWithStreamchange()
+        this._allowAllDiagram = new DiagramWithStreamchange()
+        this._allowAllDiagram.allowAny = true
+    }
 }

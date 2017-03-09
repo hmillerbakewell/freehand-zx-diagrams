@@ -63,10 +63,7 @@ export class Edge extends TypedId {
 
 
 export interface IDiagramInput {
-  importEdge: (edge: Edge) => void
-  importVertex: (vertex: Vertex) => void
-  importRewriteDiagram: (diagram: Diagram) => void
-  fireChange: () => void
+  importRewriteDiagram: (diagram: IDiagramOutput) => void
 }
 export interface IDiagramOutput {
   edges: Edge[]
@@ -77,12 +74,12 @@ export interface IStreamCaller {
   subscribe: (handler: IStreamListener) => void
 }
 export interface IStreamListener {
-  upstreamChange: () => void
+  upstreamChange: (diagram: IDiagramOutput) => void
 }
 
 /**
- * Innermost Diagram object
- * Has edges, vertices, ways to import them and events
+ * Diagram object
+ * Has edges, vertices, ways to input, output and events
  */
 export class Diagram
   extends TypedId
@@ -96,7 +93,7 @@ export class Diagram
   fireChange: () => void = () => {
     this.redoJSON()
     for (var l of this.listeners) {
-      l.upstreamChange()
+      l.upstreamChange(this)
     }
   }
 

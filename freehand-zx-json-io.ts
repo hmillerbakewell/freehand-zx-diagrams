@@ -47,16 +47,15 @@ export interface IQuantoWireVertex {
 }
 
 export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
-    constructor(
-        upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller,
-        downstreamDiagram: Diagrams.IDiagramInput) {
-        super(downstreamDiagram, upstreamDiagram)
-        this.upstreamChange = this.onDiagramChange
-        this.upstreamDiagram.subscribe(this)
+    constructor() {
+        super()
     }
-    onDiagramChange() {
+    importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
+    = (diagram) => {
         $(this.UISelector).html(
-            JSON.stringify(JSON.parse(this.toSimpleZXGraph()), undefined, 2)
+            JSON.stringify(
+                JSON.parse(this.toSimpleZXGraph(diagram))
+                , undefined, 2)
         )
     }
     onJSONChange: () => void = () => {
@@ -120,17 +119,17 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                 dummyEdge.id = edgeName
                 packetDiagram.importEdge(dummyEdge)
             }
-            this.downstreamDiagram.importRewriteDiagram(packetDiagram)
+            this.outputDiagram.importRewriteDiagram(packetDiagram)
         }
     }
-    toSimpleZXGraph() {
+    toSimpleZXGraph(diagram: Diagrams.IDiagramOutput) {
         var output = {
             node_vertices: {},
             undir_edges: {},
             wire_vertices: {}
         }
         // Loop through vertices, act according to the existing vertex.type data
-        for (var vertex of this.upstreamDiagram.vertices) {
+        for (var vertex of diagram.vertices) {
             if (vertex.data) {
                 switch (vertex.data.type) {
                     case ZX.VERTEXTYPES.WIRE:
@@ -178,7 +177,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
         }
 
         // Then edges
-        for (var edge of this.upstreamDiagram.edges) {
+        for (var edge of diagram.edges) {
             output.undir_edges[edge.id] = {
                 src: edge.start,
                 tgt: edge.end

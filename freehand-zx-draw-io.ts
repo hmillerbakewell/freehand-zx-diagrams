@@ -106,9 +106,8 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   }
 
 
-  constructor(downstreamDiagram: Diagrams.IDiagramInput,
-    upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller) {
-    super(downstreamDiagram, upstreamDiagram)
+  constructor() {
+    super()
     //this.upstreamDiagram.subscribe(this)
     this.takeInput = false
     this.currentPath = ""
@@ -117,7 +116,9 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     this.lastTimeTriggered = (new Date()).getMilliseconds()
     this.mousePos = new SVG.Point(0, 0)
     this.virtualDiagram = new Diagrams.Diagram()
+    this.outputDiagram = new Diagrams.Diagram()
   }
+  outputDiagram: Diagrams.Diagram
   addPoint: (x: number, y: number) => void = (x: number, y: number) => {
     this.lastTimeTriggered = (new Date()).getMilliseconds()
     if (this.takeInput) {
@@ -188,7 +189,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         verticesAddedToPacket[edge.end] = true
       }
     }
-    this.downstreamDiagram.importRewriteDiagram(packetDiagram)
+    this.outputDiagram.importRewriteDiagram(packetDiagram)
   }
   importPathAsObject:
   (pathAsString: string) => (Diagrams.Edge | Diagrams.Vertex | null)
@@ -248,10 +249,11 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       return null
     }
   }
-  upstreamChange = () => {
-    if (this.upstreamDiagram.toJSON() !== this.virtualDiagram.toJSON()) {
+  importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
+  = (diagram) => {
+    if (diagram.toJSON() !== this.outputDiagram.toJSON()) {
       this.paths = []
-      for (let vertex of this.upstreamDiagram.vertices) {
+      for (let vertex of diagram.vertices) {
         switch ((<ZX.IVertexData>vertex.data).type) {
           case ZX.VERTEXTYPES.INPUT:
           case ZX.VERTEXTYPES.OUTPUT:
@@ -276,10 +278,10 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             var hadamardBox: SVGDrawableElement = {
               type: ENUMSVGDrawingType.RECT,
               dataRect: {
-                width: 5,
-                height: 5,
-                x: vertex.pos.x,
-                y: vertex.pos.y
+                width: 10,
+                height: 10,
+                x: vertex.pos.x-5,
+                y: vertex.pos.y-5
               },
               color: {
                 strokeData: "black",
@@ -288,12 +290,11 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             }
             this.paths.push(hadamardBox)
             break;
-
           case ZX.VERTEXTYPES.Z:
             var zNode: SVGDrawableElement = {
               type: ENUMSVGDrawingType.CIRCLE,
               dataCircle: {
-                radius: 5,
+                radius: 10,
                 cx: vertex.pos.x,
                 cy: vertex.pos.y
               },
@@ -308,7 +309,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             var xNode: SVGDrawableElement = {
               type: ENUMSVGDrawingType.CIRCLE,
               dataCircle: {
-                radius: 5,
+                radius: 10,
                 cx: vertex.pos.x,
                 cy: vertex.pos.y
               },
@@ -321,7 +322,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             break;
         }
       }
-      for (let edge of this.upstreamDiagram.edges) {
+      for (let edge of diagram.edges) {
         var data = <ZX.IEdgeData & DiagramIO.IFreehandOnSVGEdge>edge.data
         switch (data.type) {
           case ZX.EDGETYPES.PLAIN:
@@ -337,7 +338,8 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         }
       }
       this.drawAllShapes()
-      this.virtualDiagram.importRewriteDiagram(this.upstreamDiagram)
+      this.virtualDiagram.importRewriteDiagram(diagram)
+      this.outputDiagram.importRewriteDiagram(diagram)
     }
   }
   drawAllShapes = () => {
@@ -373,7 +375,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   }
 
   // Joining edges and vertices
-  private mergeNearbyVertices() {
+  private mergeNearbyVertices: () => void = () => {
     //First get list of vertexGaps
     // For each vertexGap compare distances to each vertex
     var inferredVertices: Diagrams.Vertex[] = []
