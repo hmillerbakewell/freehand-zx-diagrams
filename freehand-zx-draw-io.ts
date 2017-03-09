@@ -1,6 +1,7 @@
 import Diagrams = require("./freehand-diagrams.js")
 import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
+import waypointsToSmoothPath = require("./waypoints-to-smooth-path.js")
 import $ = require("jquery")
 import DiagramIO = require("./freehand-io.js")
 import RDP = require("./RamerDouglasPeucker.js")
@@ -55,7 +56,8 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   closingEdgeEdgeDistance: number = 20
   closingEdgeVertexDistance: number = 20
 
-  private virtualDiagram: Diagrams.Diagram
+  private diagUserDrawingOnly: Diagrams.Diagram
+  private diagMergedVertices: Diagrams.Diagram
 
   // Mouse Events
 
@@ -115,14 +117,15 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     this.svgElement = null
     this.lastTimeTriggered = (new Date()).getMilliseconds()
     this.mousePos = new SVG.Point(0, 0)
-    this.virtualDiagram = new Diagrams.Diagram()
+    this.diagUserDrawingOnly = new Diagrams.Diagram()
+    this.diagMergedVertices = new Diagrams.Diagram()
     this.outputDiagram = new Diagrams.Diagram()
   }
   outputDiagram: Diagrams.Diagram
   addPoint: (x: number, y: number) => void = (x: number, y: number) => {
     this.lastTimeTriggered = (new Date()).getMilliseconds()
     if (this.takeInput) {
-      var round = function (x : number, accuracy : number) {
+      var round = function (x: number, accuracy: number) {
         return Math.round(x * accuracy) / accuracy;
       }
       var s = this.currentPath.length === 0 ? "M" : "L";
@@ -154,7 +157,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     this.currentPath = "";
     this.takeInput = false
     // Update the private virtual diagram
-    if (this.virtualDiagram) {
+    if (this.diagUserDrawingOnly) {
       this.importPathAsObject(s)
     }
     // Try and tie up loose edges, etc. in the virtual diagram
@@ -170,14 +173,14 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     // Add all the uninferred vertices
     var vertexByID: { [index: string]: Diagrams.Vertex } = {}
     var verticesAddedToPacket: { [index: string]: boolean } = {}
-    for (let vertex of this.virtualDiagram.vertices) {
+    for (let vertex of this.diagMergedVertices.vertices) {
       if (!(<IVertexDataInferred>vertex.data).inferred) {
         packetDiagram.importVertex(vertex)
         verticesAddedToPacket[vertex.id] = true
       }
       vertexByID[vertex.id] = vertex
     }
-    for (let edge of this.virtualDiagram.edges) {
+    for (let edge of this.diagMergedVertices.edges) {
       packetDiagram.importEdge(edge)
       // Add any vertices the edge is joined to
       if (!verticesAddedToPacket[edge.start]) {
@@ -191,6 +194,10 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     }
     this.outputDiagram.importRewriteDiagram(packetDiagram)
   }
+  /**
+   * Import Path as Object
+   * @param {string} pathAsString the path in SVGPath or similar format
+   */
   importPathAsObject:
   (pathAsString: string) => (Diagrams.Edge | Diagrams.Vertex | null)
   = (pathAsString: string) => {
@@ -199,9 +206,9 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       .replace(/[a-zA-Z]/g, '')
       .replace(/[\s,]+/g, ' ')
       .trim()
-    var interpolatedPath = pathInterpolate(pathAsString, 10)
+    var interpolatedPath = pathInterpolate(pathAsString, 2)
     var RDPWaypoints = RDP
-      .RamerDouglasPeucker(interpolatedPath.waypoints, 10)
+      .RamerDouglasPeucker(interpolatedPath.waypoints, 2)
       .concat([interpolatedPath.end])
     if (interpolatedPath.length > 10) {
 
@@ -220,10 +227,10 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       if (itIsAnEdge) {
         var vStart = new Diagrams.Vertex(start)
         vStart.data = <IVertexDataInferred>{ inferred: true }
-        this.virtualDiagram.importVertex(vStart)
+        this.diagUserDrawingOnly.importVertex(vStart)
         var vEnd = new Diagrams.Vertex(end)
         vEnd.data = <IVertexDataInferred>{ inferred: true }
-        this.virtualDiagram.importVertex(vEnd)
+        this.diagUserDrawingOnly.importVertex(vEnd)
 
         r = new Diagrams.Edge(vStart, vEnd)
         r.data = <DiagramIO.IFreehandOnSVGEdge & ZX.IEdgeData>{
@@ -231,7 +238,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
           RDPWaypoints: pathToPosnList(RDPWaypoints),
           originalPath: originalPath
         }
-        this.virtualDiagram.importEdge(r)
+        this.diagUserDrawingOnly.importEdge(r)
       } else {
         var midpointX = interpolatedPath.bbox[0]
           + (interpolatedPath.bbox[2] / 2)
@@ -242,7 +249,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
           type: ZX.VERTEXTYPES.Z,
           label: ""
         }
-        this.virtualDiagram.importVertex(r)
+        this.diagUserDrawingOnly.importVertex(r)
       }
       return r
     } else {
@@ -253,75 +260,6 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   = (diagram) => {
     if (diagram.toJSON() !== this.outputDiagram.toJSON()) {
       this.paths = []
-      for (let vertex of diagram.vertices) {
-        switch ((<ZX.IVertexData>vertex.data).type) {
-          case ZX.VERTEXTYPES.INPUT:
-          case ZX.VERTEXTYPES.OUTPUT:
-          case ZX.VERTEXTYPES.WIRE:
-            var smallBox: SVGDrawableElement = {
-              type: ENUMSVGDrawingType.RECT,
-              dataRect: {
-                width: 1,
-                height: 1,
-                x: vertex.pos.x,
-                y: vertex.pos.y
-              },
-              color: {
-                strokeData: "black",
-                fillColor: "black"
-              }
-
-            }
-            this.paths.push(smallBox)
-            break;
-          case ZX.VERTEXTYPES.HADAMARD:
-            var hadamardBox: SVGDrawableElement = {
-              type: ENUMSVGDrawingType.RECT,
-              dataRect: {
-                width: 10,
-                height: 10,
-                x: vertex.pos.x-5,
-                y: vertex.pos.y-5
-              },
-              color: {
-                strokeData: "black",
-                fillColor: "transparent"
-              }
-            }
-            this.paths.push(hadamardBox)
-            break;
-          case ZX.VERTEXTYPES.Z:
-            var zNode: SVGDrawableElement = {
-              type: ENUMSVGDrawingType.CIRCLE,
-              dataCircle: {
-                radius: 10,
-                cx: vertex.pos.x,
-                cy: vertex.pos.y
-              },
-              color: {
-                strokeData: "black",
-                fillColor: "transparent"
-              }
-            }
-            this.paths.push(zNode)
-            break;
-          case ZX.VERTEXTYPES.X:
-            var xNode: SVGDrawableElement = {
-              type: ENUMSVGDrawingType.CIRCLE,
-              dataCircle: {
-                radius: 10,
-                cx: vertex.pos.x,
-                cy: vertex.pos.y
-              },
-              color: {
-                strokeData: "black",
-                fillColor: "black"
-              }
-            }
-            this.paths.push(xNode)
-            break;
-        }
-      }
       for (let edge of diagram.edges) {
         var data = <ZX.IEdgeData & DiagramIO.IFreehandOnSVGEdge>edge.data
         switch (data.type) {
@@ -336,12 +274,88 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             this.paths.push(edgePath)
             break;
         }
+
+        for (let vertex of diagram.vertices) {
+          switch ((<ZX.IVertexData>vertex.data).type) {
+            case ZX.VERTEXTYPES.INPUT:
+            case ZX.VERTEXTYPES.OUTPUT:
+            case ZX.VERTEXTYPES.WIRE:
+              var smallBox: SVGDrawableElement = {
+                type: ENUMSVGDrawingType.RECT,
+                dataRect: {
+                  width: 1,
+                  height: 1,
+                  x: vertex.pos.x,
+                  y: vertex.pos.y
+                },
+                color: {
+                  strokeData: "black",
+                  fillColor: "black"
+                }
+
+              }
+              this.paths.push(smallBox)
+              break;
+            case ZX.VERTEXTYPES.HADAMARD:
+              var hadamardBox: SVGDrawableElement = {
+                type: ENUMSVGDrawingType.RECT,
+                dataRect: {
+                  width: 10,
+                  height: 10,
+                  x: vertex.pos.x - 5,
+                  y: vertex.pos.y - 5
+                },
+                color: {
+                  strokeData: "black",
+                  fillColor: "white"
+                }
+              }
+              this.paths.push(hadamardBox)
+              break;
+            case ZX.VERTEXTYPES.Z:
+              var zNode: SVGDrawableElement = {
+                type: ENUMSVGDrawingType.CIRCLE,
+                dataCircle: {
+                  radius: 10,
+                  cx: vertex.pos.x,
+                  cy: vertex.pos.y
+                },
+                color: {
+                  strokeData: "black",
+                  fillColor: "white"
+                }
+              }
+              this.paths.push(zNode)
+              break;
+            case ZX.VERTEXTYPES.X:
+              var xNode: SVGDrawableElement = {
+                type: ENUMSVGDrawingType.CIRCLE,
+                dataCircle: {
+                  radius: 10,
+                  cx: vertex.pos.x,
+                  cy: vertex.pos.y
+                },
+                color: {
+                  strokeData: "black",
+                  fillColor: "black"
+                }
+              }
+              this.paths.push(xNode)
+              break;
+          }
+        }
       }
       this.drawAllShapes()
-      this.virtualDiagram.importRewriteDiagram(diagram)
+      this.diagUserDrawingOnly.importRewriteDiagram(diagram)
+      this.diagMergedVertices.importRewriteDiagram(diagram)
       this.outputDiagram.importRewriteDiagram(diagram)
     }
   }
+
+  /**
+   * Draw All Shapes
+   * Takes every shape in this.paths[] and renders it as best it can
+   */
   drawAllShapes = () => {
     var svg = this.svgElement;
     svg.clear();
@@ -351,6 +365,13 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         case ENUMSVGDrawingType.PATH:
           if (shape.dataPath.originalPath) {
             svgElementCreated = svg.path(shape.dataPath.originalPath)
+          }
+          else if (shape.dataPath.RDPWaypoints) {
+            svgElementCreated = svg.path(
+              waypointsToSmoothPath.smooth(shape.dataPath.RDPWaypoints)
+            )
+          } else {
+
           }
           break;
         case ENUMSVGDrawingType.CIRCLE:
@@ -376,12 +397,17 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
 
   // Joining edges and vertices
   private mergeNearbyVertices: () => void = () => {
+
+
+    // Throw everything into the diagram used for merging:
+    this.diagMergedVertices.importRewriteDiagram(this.diagUserDrawingOnly)
+
     //First get list of vertexGaps
     // For each vertexGap compare distances to each vertex
     var inferredVertices: Diagrams.Vertex[] = []
     var fixedVertices: Diagrams.Vertex[] = []
     var vertexPositions: { [id: string]: Diagrams.IDiagramPosition } = {}
-    for (let vertex of this.virtualDiagram.vertices) {
+    for (let vertex of this.diagMergedVertices.vertices) {
       if (vertex.data.inferred) {
         inferredVertices.push(vertex)
       } else {
@@ -417,20 +443,20 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         }
       }
       if (closestFixedVertex) {
-        swapEdgeVertex(this.virtualDiagram, infVertex, closestFixedVertex)
+        swapEdgeVertex(this.diagMergedVertices, infVertex, closestFixedVertex)
       }
     }
 
     // Try and join any inferred vertex to another inferred vertex
     for (var i = 0; i < inferredVertices.length; i++) {
       let infVertex1 = inferredVertices[i]
-      let closestDist = Math.pow(this.closingEdgeEdgeDistance, 2) + 1
+      let closestDist = Math.pow(this.closingEdgeEdgeDistance, 2)
       let dist = 0
       let closestInfVertex: (Diagrams.Vertex | null) = null
       for (var j = i + 1; j < inferredVertices.length; j++) {
         let infVertex2 = inferredVertices[j]
         dist = Diagrams.posnDistanceSquared(infVertex1.pos, infVertex2.pos)
-        if (dist < closestDist) {
+        if (dist <= closestDist) {
           closestDist = dist
           // Claim closest fixed vertex
           closestInfVertex = infVertex2
@@ -449,19 +475,19 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
           label: "",
           inferred: true
         }
-        this.virtualDiagram.importVertex(vx)
-        swapEdgeVertex(this.virtualDiagram, closestInfVertex, vx)
-        swapEdgeVertex(this.virtualDiagram, infVertex1, vx)
+        this.diagMergedVertices.importVertex(vx)
+        swapEdgeVertex(this.diagMergedVertices, closestInfVertex, vx)
+        swapEdgeVertex(this.diagMergedVertices, infVertex1, vx)
       } else {
-        // create a wire vertex to join to
+        // create an input vertex to join to
         let vx = new Diagrams.Vertex(infVertex1.pos)
         vx.data = <ZX.IVertexData>{
           type: ZX.VERTEXTYPES.INPUT,
           label: "",
           inferred: true
         }
-        this.virtualDiagram.importVertex(vx)
-        swapEdgeVertex(this.virtualDiagram, infVertex1, vx)
+        this.diagMergedVertices.importVertex(vx)
+        swapEdgeVertex(this.diagMergedVertices, infVertex1, vx)
       }
     }
 

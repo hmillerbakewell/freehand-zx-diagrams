@@ -67,7 +67,9 @@ export interface IDiagramInput {
 }
 export interface IDiagramOutput {
   edges: Edge[]
+  edgeById: { [index: string]: Edge }
   vertices: Vertex[]
+  vertexById: { [index: string]: Vertex }
   toJSON: () => string
 }
 export interface IStreamCaller {
@@ -104,6 +106,7 @@ export class Diagram
   }
   private importEdgeDontFire: (edge: Edge) => void = (edge: Edge) => {
     this.edges.push(edge)
+    this.edgeById[edge.id] = edge
   }
   importVertex: (vertex: Vertex) => void = (vertex: Vertex) => {
     this.importVertexDontFire(vertex)
@@ -112,17 +115,28 @@ export class Diagram
   private importVertexDontFire: (vertex: Vertex) => void
   = (vertex: Vertex) => {
     this.vertices.push(vertex)
+    this.vertexById[vertex.id] = vertex
   }
   importRewriteDiagram: (diagram: IDiagramOutput) => void
   = (diagram: IDiagramOutput) => {
     var previousToJSON = this.toJSON()
+    var newJSONparse = <IDiagramOutput>JSON.parse(diagram.toJSON())
     this.edges = []
     this.vertices = []
-    for (var edge of diagram.edges) {
-      this.importEdgeDontFire(edge)
+    this.vertexById = {}
+    for (var vertex of newJSONparse.vertices) {
+      var v = new Vertex(vertex.pos)
+      v.id = vertex.id
+      v.data = vertex.data
+      this.importVertexDontFire(v)
     }
-    for (var vertex of diagram.vertices) {
-      this.importVertexDontFire(vertex)
+    for (var edge of newJSONparse.edges) {
+      var e = new Edge(
+        diagram.vertexById[edge.start],
+        diagram.vertexById[edge.end])
+      e.id = edge.id
+      e.data = edge.data
+      this.importEdgeDontFire(e)
     }
     this.redoJSON()
     if (this.toJSON() !== previousToJSON) {
@@ -131,8 +145,10 @@ export class Diagram
   }
   edges: Edge[] = []
   vertices: Vertex[] = []
+  edgeById: { [index: string]: Edge } = {}
+  vertexById: { [index: string]: Vertex } = {}
 
-  private _toJSON: string;
+  private _toJSON: string; // Caching no longer used
   private redoJSON: () => string = () => {
 
     var dummyDiagram = {
@@ -144,10 +160,6 @@ export class Diagram
     return this._toJSON
   }
   toJSON: () => string = () => {
-    if (this._toJSON) {
-      return this._toJSON
-    } else {
-      return this.redoJSON()
-    }
+    return this.redoJSON()
   }
 }

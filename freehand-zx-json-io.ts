@@ -103,8 +103,11 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                 let dummyVertex = new Diagrams.Vertex(coord)
                 dummyVertex.pos = coord
                 dummyVertex.id = nodeVertexName
-                dummyVertex.data.type = vertexQuantoLabels[nodeVertex.data.type]
-                dummyVertex.data.label = nodeVertex.data.value
+                let data: ZX.IVertexData = {
+                    type: vertexQuantoLabels[nodeVertex.data.type],
+                    label: nodeVertex.data.value
+                }
+                dummyVertex.data = data
                 packetDiagram.importVertex(dummyVertex)
                 vertexLookup[nodeVertexName] = dummyVertex
             }
@@ -115,8 +118,9 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                 let targetVertex = vertexLookup[edge.tgt]
 
                 let dummyEdge = new Diagrams.Edge(sourceVertex, targetVertex)
-                let data = <DiagramIO.IFreehandOnSVGEdge>{
-                    RDPWaypoints: [],
+                let data: DiagramIO.IFreehandOnSVGEdge & ZX.IEdgeData = {
+                    RDPWaypoints: [sourceVertex.pos,targetVertex.pos],
+                    type: ZX.EDGETYPES.PLAIN
                 }
                 dummyEdge.data = data
                 dummyEdge.id = edgeName

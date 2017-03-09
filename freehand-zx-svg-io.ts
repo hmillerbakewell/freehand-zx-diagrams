@@ -1,6 +1,7 @@
 import Diagrams = require("./freehand-diagrams.js")
 import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
+import waypointsToSmoothPath = require("./waypoints-to-smooth-path.js")
 import $ = require("jquery")
 import DiagramIO = require("./freehand-io.js")
 import ZX = require("./theory-ZX.js")
@@ -8,20 +9,33 @@ import ZX = require("./theory-ZX.js")
 export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   constructor() {
     super()
+    this.internalDiagram = new Diagrams.Diagram()
   }
   importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
   = (diagram) => {
-    this.toZXSVG(diagram)
-    this.outputDiagram.importRewriteDiagram(diagram)
+    this.internalDiagram.importRewriteDiagram(diagram)
+    this.toZXSVG(this.internalDiagram)
+    this.outputDiagram.importRewriteDiagram(this.internalDiagram)
   }
+  private internalDiagram: Diagrams.Diagram
   clickedElement: (e: MouseEvent) => void = (e) => {
     e.preventDefault()
     if ((<any>e.srcElement).dataset) {
       var clickedID = (<any>e.srcElement).dataset["id"]
     }
+    var getElementById: (id: string) => (Diagrams.Edge | Diagrams.Vertex)
+      = (id) => {
+        if (this.internalDiagram.edgeById[id]) {
+          return this.internalDiagram.edgeById[id]
+        } else if (this.internalDiagram.vertexById[id]) {
+          return this.internalDiagram.vertexById[id]
+        } else {
+          return null
+        }
+      }
     if (clickedID) {
-      var ele = this.idToElement[clickedID]
-      if (ele.type === "Vertex") {
+      var ele = getElementById(clickedID)
+      if (ele && ele.type === "Vertex") {
         var dv = <ZX.IVertexData>ele.data
         if (dv.type === ZX.VERTEXTYPES.Z) {
           dv.type = ZX.VERTEXTYPES.X
@@ -30,17 +44,17 @@ export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         } else if (dv.type === ZX.VERTEXTYPES.HADAMARD) {
           dv.type = ZX.VERTEXTYPES.Z
         }
-        this.outputDiagram.fireChange()
-      } else if (ele.type === "Edge") {
+        this.toZXSVG(this.internalDiagram)
+        this.outputDiagram.importRewriteDiagram(this.internalDiagram)
+      } else if (ele && ele.type === "Edge") {
 
       }
     }
   }
-  idToElement: { [index: string]: (Diagrams.Vertex | Diagrams.Edge) } = {}
   SVG: SVG.Container
   toZXSVG: (diagram: Diagrams.IDiagramOutput) => void
   = (diagram) => {
-    this.idToElement = ZXToSVG(
+    ZXToSVG(
       diagram,
       this.SVG,
       this.clickedElement)
@@ -67,72 +81,13 @@ export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
     var pathCommand = ""
     pathCommand += `M${startPos.x} ${startPos.y} `
     if ((<DiagramIO.IFreehandOnSVGEdge>edge.data).RDPWaypoints) {
-      var smoothingFactor = 20
-      var tangents: Diagrams.IDiagramPosition[] = []
-      var normaliseAndPushToTangents = function (x: number, y: number) {
-
-        var tNorm: Diagrams.IDiagramPosition = {
-          x: 0,
-          y: 0
-        }
-        let d = 0
-        d = Math.pow(x * x + y * y, 0.5)
-        if (d > 0) {
-          tNorm = {
-            x: x / d,
-            y: y / d
-          }
-        }
-        tangents.push(tNorm)
-        return tNorm
-      }
       var waypoints = (<DiagramIO.IFreehandOnSVGEdge>edge.data).RDPWaypoints
       // Calculate tangents:
       // vertex start -> waypoint 0
-      if (waypoints.length == 0) {
-        waypoints[0] = startPos
-        waypoints[1] = endPos
-      }
-      normaliseAndPushToTangents(
-        waypoints[0].x - startPos.x, waypoints[0].y - startPos.y
-      )
-      // waypoint i -> waypoint i+1
 
-      for (var i = 1; i < waypoints.length - 1; i++) {
-        normaliseAndPushToTangents(
-          waypoints[i + 1].x - waypoints[i - 1].x,
-          waypoints[i + 1].y - waypoints[i - 1].y
-        )
-      }
-      // waypoint last -> vertex end
-      normaliseAndPushToTangents(
-        endPos.x - waypoints[i].x,
-        endPos.y - waypoints[i].y
-      )
-
-      //Calculate path data:
-      // vertex start -> waypoint 0
-      pathCommand += `L ${waypoints[0].x} ${waypoints[0].y} `
-      // waypoint 0 -> waypoint 1
-      var c1x = waypoints[0].x + tangents[0].x * smoothingFactor
-      var c1y = waypoints[0].y + tangents[0].y * smoothingFactor
-      var c2x = waypoints[1].x - tangents[1].x * smoothingFactor
-      var c2y = waypoints[1].y - tangents[1].y * smoothingFactor
-      var c3x = waypoints[1].x
-      var c3y = waypoints[1].y
-      pathCommand +=
-        `C ${c1x} ${c1y}, ${c2x} ${c2y}, ${c3x} ${c3y} `
-      // waypoint i -> waypoint i+1
-      for (var i = 1; i < waypoints.length - 1; i++) {
-        pathCommand +=
-          `S ${waypoints[i + 1].x - tangents[i + 1].x * smoothingFactor} `
-        pathCommand +=
-          `${waypoints[i + 1].y - tangents[i + 1].y * smoothingFactor}, `
-        pathCommand +=
-          `${waypoints[i + 1].x} ${waypoints[i + 1].y} `
-      }
-      // waypoint last -> vertex end
-      pathCommand += `L ${endPos.x} ${endPos.y} `
+      pathCommand += waypointsToSmoothPath.smooth([startPos]
+        .concat(waypoints)
+        .concat([endPos]))
 
     }
     svgContainer.path(pathCommand)
