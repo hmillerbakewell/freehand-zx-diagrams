@@ -1,7 +1,9 @@
 import shortid = require("shortid")
 
 
-shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£')
+shortid.characters(
+  '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£'
+)
 export abstract class uID {
   id: string
   constructor() {
@@ -110,16 +112,15 @@ export class Diagram
     this.importVertexDontFire(vertex)
     this.fireChange()
   }
-  private importVertexDontFire: (vertex: Vertex) => void = (vertex: Vertex) => {
+  private importVertexDontFire: (vertex: Vertex) => void
+  = (vertex: Vertex) => {
     this.vertices.push(vertex)
-    this.vertexByID[vertex.id] = vertex
   }
   importRewriteDiagram: (diagram: IDiagramOutput) => void
   = (diagram: IDiagramOutput) => {
     var previousToJSON = this.toJSON()
     this.edges = []
     this.vertices = []
-    this.vertexByID = {}
     for (var edge of diagram.edges) {
       this.importEdgeDontFire(edge)
     }
