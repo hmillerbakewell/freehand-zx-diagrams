@@ -96,7 +96,9 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   private cursor: (e: MouseEvent) => SVGPoint = (e) => {
     this.mousePos = new SVG.Point(e.clientX, e.clientY)
     if (this.svgElement) {
-      let transcribedPoint = this.mousePos.transform(this.svgElement.screenCTM().inverse())
+      let transcribedPoint = this.mousePos.transform(
+        this.svgElement.screenCTM().inverse()
+      )
       return transcribedPoint.native();
     } else {
       return this.mousePos.native()
@@ -128,7 +130,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       s += y
       s += " ";
       this.currentPath += s;
-      this.svgElement.path(this.currentPath).stroke("black").fill("transparent");
+      this.svgElement.path(this.currentPath).stroke("black").fill("transparent")
     }
   }
   startPath: () => void = () => {
@@ -188,14 +190,18 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     }
     this.downstreamDiagram.importRewriteDiagram(packetDiagram)
   }
-  importPathAsObject: (pathAsString: string) => (Diagrams.Edge | Diagrams.Vertex | null) = (pathAsString: string) => {
+  importPathAsObject:
+  (pathAsString: string) => (Diagrams.Edge | Diagrams.Vertex | null)
+  = (pathAsString: string) => {
     var originalPath = pathAsString
     pathAsString = pathAsString
       .replace(/[a-zA-Z]/g, '')
       .replace(/[\s,]+/g, ' ')
       .trim()
     var interpolatedPath = pathInterpolate(pathAsString, 10)
-    var RDPWaypoints = RDP.RamerDouglasPeucker(interpolatedPath.waypoints, 10).concat([interpolatedPath.end])
+    var RDPWaypoints = RDP
+      .RamerDouglasPeucker(interpolatedPath.waypoints, 10)
+      .concat([interpolatedPath.end])
     if (interpolatedPath.length > 10) {
 
       var pathAsPositions = pathToPosnList(RDPWaypoints)
@@ -203,7 +209,10 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       // Is it closed?
       var start = { x: interpolatedPath.start[0], y: interpolatedPath.start[1] }
       var end = { x: interpolatedPath.end[0], y: interpolatedPath.end[1] }
-      if (Diagrams.posnDistanceSquared(start, end) < Math.pow(this.closingVertexDistance, 2)) {
+      if (
+        Diagrams.posnDistanceSquared(start, end)
+        <
+        Math.pow(this.closingVertexDistance, 2)) {
         itIsAnEdge = false
       }
       var r: (Diagrams.Edge | Diagrams.Vertex) // result
