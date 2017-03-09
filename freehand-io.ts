@@ -34,5 +34,6 @@ export class DiagramIOHTMLModule
 
 
 export interface IFreehandOnSVGEdge {
-    RDPWaypoints: Diagrams.IDiagramPosition[]
+    RDPWaypoints: Diagrams.IDiagramPosition[],
+    originalPath?: string
 }

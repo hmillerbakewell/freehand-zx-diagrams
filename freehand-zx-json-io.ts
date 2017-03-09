@@ -25,6 +25,26 @@ vertexQuantoLabels["Z"] = ZX.VERTEXTYPES.Z
 let quantoEdgeLabels: { [id: number]: string } = {}
 quantoEdgeLabels[ZX.EDGETYPES.PLAIN] = ""
 
+export interface IQuantoEdge {
+    src: string
+    tgt: string
+}
+export interface IQuantoNodeVertex {
+    data: {
+        type: string,
+        value: string
+    }
+    annotation: {
+        boundary: boolean,
+        coord: [number, number]
+    }
+}
+export interface IQuantoWireVertex {
+    annotation: {
+        boundary: boolean,
+        coord: [number, number]
+    }
+}
 
 export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
     constructor(
@@ -47,13 +67,16 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
             // TODO flag when JSON is invalid
         }
         if (parsed) {
-            var dummyDiagram = new Diagrams.Diagram()
-            let vertexPosLookup: { [id: string]: Diagrams.IDiagramPosition } = {}
+            var packetDiagram = new Diagrams.Diagram()
+            let vertexLookup:
+                { [id: string]: Diagrams.Vertex } = {}
             for (let wireVertexName in parsed.wire_vertices) {
-                let wireVertex = parsed.wire_vertices[wireVertexName]
+                let wireVertex: IQuantoWireVertex = parsed.wire_vertices[wireVertexName]
                 var coordArr = wireVertex.annotation.coord
-                var coord = { x: parseFloat(coordArr[0]), y: parseFloat(coordArr[1]) }
-                vertexPosLookup[wireVertexName] = coord
+                var coord = {
+                    x: coordArr[0],
+                    y: coordArr[1]
+                }
                 let dummyVertex = new Diagrams.Vertex(coord)
                 dummyVertex.pos = coord
                 if (wireVertex.annotation.boundary) {
@@ -61,35 +84,43 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                 } else {
                     dummyVertex.data.type = ZX.VERTEXTYPES.INPUT
                 }
-                dummyDiagram.importVertex(dummyVertex)
+                packetDiagram.importVertex(dummyVertex)
+                vertexLookup[wireVertexName] = dummyVertex
             }
 
             for (let nodeVertexName in parsed.node_vertices) {
-                let nodeVertex = parsed.node_vertices[nodeVertexName]
+                let nodeVertex: IQuantoNodeVertex = parsed.node_vertices[nodeVertexName]
                 var coordArr = nodeVertex.annotation.coord
-                var coord = { x: parseFloat(coordArr[0]), y: parseFloat(coordArr[1]) }
-                vertexPosLookup[nodeVertexName] = coord
-                let dummyVertex = new Diagrams.Vertex({ x: parseFloat(coord[0]), y: parseFloat(coord[1]) })
+                var coord = {
+                    x: coordArr[0],
+                    y: coordArr[1]
+                }
+                let dummyVertex = new Diagrams.Vertex({
+                    x: parseFloat(coord[0]),
+                    y: parseFloat(coord[1])
+                })
                 dummyVertex.pos = coord
                 dummyVertex.id = nodeVertexName
                 dummyVertex.data.type = vertexQuantoLabels[nodeVertex.data.type]
                 dummyVertex.data.label = nodeVertex.data.value
-                dummyDiagram.importVertex(dummyVertex)
+                packetDiagram.importVertex(dummyVertex)
+                vertexLookup[nodeVertexName] = dummyVertex
             }
 
-            for (let edgeName of parsed.undir_edges) {
-                let edge = parsed.undir_edges[edgeName]
-                let sourceVertexPos = vertexPosLookup[edge.src]
-                let targetVertexPos = vertexPosLookup[edge.tgt]
-
-                let sourceVertex = new Diagrams.Vertex(sourceVertexPos)
-                let targetVertex = new Diagrams.Vertex(targetVertexPos)
+            for (let edgeName in parsed.undir_edges) {
+                let edge: IQuantoEdge = parsed.undir_edges[edgeName]
+                let sourceVertex = vertexLookup[edge.src]
+                let targetVertex = vertexLookup[edge.tgt]
 
                 let dummyEdge = new Diagrams.Edge(sourceVertex, targetVertex)
+                let data = <DiagramIO.IFreehandOnSVGEdge>{
+                    RDPWaypoints: [],
+                }
+                dummyEdge.data = data
                 dummyEdge.id = edgeName
-                dummyDiagram.importEdge(dummyEdge)
+                packetDiagram.importEdge(dummyEdge)
             }
-            this.targetDiagram.importRewriteDiagram(dummyDiagram)
+            this.downstreamDiagram.importRewriteDiagram(packetDiagram)
         }
     }
     toSimpleZXGraph() {
@@ -99,7 +130,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
             wire_vertices: {}
         }
         // Loop through vertices, act according to the existing vertex.type data
-        for (var vertex of this.targetDiagram.vertices) {
+        for (var vertex of this.upstreamDiagram.vertices) {
             if (vertex.data) {
                 switch (vertex.data.type) {
                     case ZX.VERTEXTYPES.WIRE:
@@ -147,7 +178,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
         }
 
         // Then edges
-        for (var edge of this.targetDiagram.edges) {
+        for (var edge of this.upstreamDiagram.edges) {
             output.undir_edges[edge.id] = {
                 src: edge.start,
                 tgt: edge.end
