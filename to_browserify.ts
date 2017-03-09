@@ -16,7 +16,7 @@ var diagramsJSON = new DiagramsJSONModule.DiagramsJSONIOModule(D, D)
 
 $(document).ready(function () {
     //zx-drawing
-    freehandOnSVG.createSVG('svgInputHolder')
+    freehandOnSVG.createSVGHolder('svgInputHolder')
     //zx-JSON
     zxJSON.UISelector = "#ZXJSONIOModule > .main > #JSON"
     $(zxJSON.UISelector).change(zxJSON.onJSONChange)
