@@ -46,6 +46,12 @@ export interface IQuantoWireVertex {
     }
 }
 
+export interface IQuantoIO {
+    wire_vertices: { [index: string]: IQuantoWireVertex }
+    node_vertices: { [index: string]: IQuantoNodeVertex }
+    undir_edges: { [index: string]: IQuantoEdge }
+}
+
 export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
     constructor() {
         super()
@@ -94,10 +100,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                     x: coordArr[0],
                     y: coordArr[1]
                 }
-                let dummyVertex = new Diagrams.Vertex({
-                    x: parseFloat(coord[0]),
-                    y: parseFloat(coord[1])
-                })
+                let dummyVertex = new Diagrams.Vertex(coord)
                 dummyVertex.pos = coord
                 dummyVertex.id = nodeVertexName
                 dummyVertex.data.type = vertexQuantoLabels[nodeVertex.data.type]
@@ -123,7 +126,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
         }
     }
     toSimpleZXGraph(diagram: Diagrams.IDiagramOutput) {
-        var output = {
+        var output = <IQuantoIO>{
             node_vertices: {},
             undir_edges: {},
             wire_vertices: {}
@@ -133,7 +136,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
             if (vertex.data) {
                 switch (vertex.data.type) {
                     case ZX.VERTEXTYPES.WIRE:
-                        output.wire_vertices[vertex.id] = {
+                        output.wire_vertices[vertex.id] = <IQuantoWireVertex>{
                             "annotation": {
                                 "boundary": false,
                                 "coord": [vertex.pos.x, vertex.pos.y]
@@ -159,6 +162,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                                 "value": (vertex.data.label || "")
                             },
                             "annotation": {
+                                "boundary": false,
                                 "coord": [vertex.pos.x, vertex.pos.y]
                             }
                         }

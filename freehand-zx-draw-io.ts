@@ -122,7 +122,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   addPoint: (x: number, y: number) => void = (x: number, y: number) => {
     this.lastTimeTriggered = (new Date()).getMilliseconds()
     if (this.takeInput) {
-      var round = function (x, accuracy) {
+      var round = function (x : number, accuracy : number) {
         return Math.round(x * accuracy) / accuracy;
       }
       var s = this.currentPath.length === 0 ? "M" : "L";
