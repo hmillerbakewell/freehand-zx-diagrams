@@ -92,6 +92,7 @@ export class Diagram
     this.listeners.push(handler)
   }
   fireChange: () => void = () => {
+    this.redoJSON()
     for (var l of this.listeners) {
       l.upstreamChange()
     }
@@ -113,7 +114,9 @@ export class Diagram
     this.vertices.push(vertex)
     this.vertexByID[vertex.id] = vertex
   }
-  importRewriteDiagram: (diagram: Diagram) => void = (diagram: Diagram) => {
+  importRewriteDiagram: (diagram: IDiagramOutput) => void
+  = (diagram: IDiagramOutput) => {
+    var previousToJSON = this.toJSON()
     this.edges = []
     this.vertices = []
     this.vertexByID = {}
@@ -123,16 +126,30 @@ export class Diagram
     for (var vertex of diagram.vertices) {
       this.importVertexDontFire(vertex)
     }
-    this.fireChange()
+    this.redoJSON()
+    if (this.toJSON() !== previousToJSON) {
+      this.fireChange()
+    }
   }
   edges: Edge[] = []
   vertices: Vertex[] = []
 
-  toString: () => string = () => {
+  private _toJSON: string;
+  private redoJSON: () => string = () => {
+
     var dummyDiagram = {
       edges: this.edges,
       vertices: this.vertices
     }
-    return JSON.stringify(dummyDiagram, undefined, 2)
+    var newJSON = JSON.stringify(dummyDiagram, undefined, 2)
+    this._toJSON = newJSON
+    return this._toJSON
+  }
+  toJSON: () => string = () => {
+    if (this._toJSON) {
+      return this._toJSON
+    } else {
+      return this.redoJSON()
+    }
   }
 }
