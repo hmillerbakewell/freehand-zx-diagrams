@@ -212,8 +212,12 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       .replace(/[a-zA-Z]/g, '')
       .replace(/[\s,]+/g, ' ')
       .trim()
-    var interpolatedPath = pathInterpolate(pathAsString, 5)
+    var interpolatedPath = pathInterpolate(pathAsString, 1)
     var RDPWaypoints = RDP
+      .RamerDouglasPeucker(interpolatedPath.waypoints, 1)
+      .concat([interpolatedPath.end])
+
+    var smootherRDP = RDP
       .RamerDouglasPeucker(interpolatedPath.waypoints, 10)
       .concat([interpolatedPath.end])
 
@@ -245,7 +249,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       r = new Diagrams.Edge(vStart, vEnd)
       var edgeData: IEdgeData = {
         type: ZX.EDGETYPES.PLAIN,
-        RDPWaypoints: pathToPosnList(RDPWaypoints),
+        RDPWaypoints: pathToPosnList(smootherRDP),
         originalPath: originalPath
       }
       r.data = edgeData
@@ -517,6 +521,7 @@ function interpolate(lambda: number, a: number, b: number) {
 
 
 function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
+  type coord = Diagrams.IDiagramPosition
   var allPoints = waypointLists.reduce(function (a, b) {
     return a.concat(b)
   })
@@ -526,7 +531,7 @@ function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
     label: "",
     radius: 0
   }
-  var hull = <Diagrams.IDiagramPosition[]>convexHull(allPoints)
+  var hull = <coord[]>convexHull(allPoints)
   var h0 = hull[0]
   var h1 = hull[1]
   var he = hull[hull.length - 1]
@@ -535,7 +540,7 @@ function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
     y: 0.4 * h0.y + 0.3 * h1.y + 0.3 * he.y
   }
 
-  var angleFromMidpoint = function (a: Diagrams.IDiagramPosition) {
+  var angleFromMidpoint = function (a: coord) {
     var modifier = 0
     if (a.y < someMid.y) {
       modifier = Math.PI
@@ -550,24 +555,9 @@ function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
     var thetaB = angleFromMidpoint(b)
 
     return thetaA - thetaB
-    /*
-        if (dax >= 0 && dbx >= 0) {
-          //both to the right of the midpoint
-          return b.y - a.y
-        } else if (dax < 0 && dbx < 0) {
-          // both to the left of the midpoint
-          return a.y - b.y
-        } else {
-          //either side of the midpoint
-          return a.x - b.x
-        }
-        */
   })
   var outsideArray = roundTheOutside.map(function (a) { return [a.x, a.y] })
-  //var rdpOutside = RDP.RamerDouglasPeucker(outsideArray, 1)
-  var distanceAB = function (
-    a: Diagrams.IDiagramPosition,
-    b: Diagrams.IDiagramPosition) {
+  var distanceAB = function (a: coord, b: coord) {
     var dx = a.x - b.x
     var dy = a.y - b.y
     return Math.pow(dx * dx + dy * dy, 0.5)
@@ -598,44 +588,99 @@ function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
   }
 
   // Now examine the angles:
-  var anglesModQuarter = angles.map(function (a) {
-    return Math.abs(a % Math.PI / 2)
+  var anglesDistQuarter = angles.map(function (a) {
+    return Math.abs(((a + Math.PI / 2) % (Math.PI / 2)) - (Math.PI / 2))
   })
-  var angleSum = anglesModQuarter.reduce(function (a, b) { return a + b })
-  var angleAvg = angleSum / anglesModQuarter.length
+  var angleSum = anglesDistQuarter.reduce(function (a, b) { return a + b })
+  var angleAvg = angleSum / anglesDistQuarter.length
+
+  var startPos = { x: outsideArray[0][0], y: outsideArray[0][1] }
+  function areaOfTriangle(a: coord, b: coord, c: coord) {
+    return Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) / 2
+  }
+
+  var hullArea = 0;
+  for (var i = 1; i < outsideArray.length - 1; i++) {
+    hullArea += areaOfTriangle(startPos,
+      {
+        x: outsideArray[i][0],
+        y: outsideArray[i][1]
+      },
+      {
+        x: outsideArray[i + 1][0],
+        y: outsideArray[i + 1][1]
+      })
+  }
 
   var bboxHeight = bboxBottom - bboxTop
   var bboxWidth = bboxRight - bboxLeft
+
+  var bboxCenter = {
+    x: bboxLeft + 0.5 * (bboxRight - bboxLeft),
+    y: bboxTop + 0.5 * (bboxBottom - bboxTop)
+  }
+
+  var distancesFromMid = outsideArray.map(function (a) {
+    return distanceAB({ x: a[0], y: a[1] }, bboxCenter)
+  })
+  var meanDistanceFromMid = distancesFromMid.reduce(function (a, b) {
+    return a + b
+  }) / distancesFromMid.length
+  var distancesFromMidVariance = distancesFromMid.reduce(function (a, b) {
+    return a + Math.pow(b - meanDistanceFromMid, 2)
+  }) / distancesFromMid.length
+
 
   var bboxPerimeter = 2 * bboxWidth + 2 * bboxHeight
   var diameter = Math.min(bboxWidth, bboxHeight)
   var diagonal = Math.pow(Math.pow(bboxWidth, 2) + Math.pow(bboxHeight, 2), 0.5)
   var circOfPerfectCircle = Math.PI * diameter
+  var areaOfPerfectCirle = Math.PI * Math.pow(diameter / 2, 2)
+  var areaOfPerfectRect = bboxWidth * bboxHeight
   var circOfNearLine = 2 * diagonal
+
+  var maxDistanceFromMid = distancesFromMid.reduce(function (a, b) {
+    return Math.max(a, b)
+  })
+
+  var minDistanceFromMid = distancesFromMid.reduce(function (a, b) {
+    return Math.min(a, b)
+  })
+  var distancesFromCirc = distancesFromMid.map(function (a) {
+    return a - diameter / 2
+  })
+  var avgDistanceFromCirc = distancesFromCirc.reduce(function (a, b) {
+    return a + b;
+  }) / distancesFromCirc.length
+
+  var pointedness = maxDistanceFromMid / minDistanceFromMid
 
   data.radius = diagonal / 2
 
   // biasses:
-  var rectOverCirc = 0.8
+  var rectOverCirc = 0.5
   var circOverLine = 0.5
 
-  // Do we think it's actually a wire not a vertex?
-  var distanceStartToEnd = distanceAB(allPoints[0], allPoints[1])
+  var curveNeeded = 0.1
 
-  if (distanceStartToEnd > (0.4 * circOfNearLine)) {
-    //Probably a line
-    data.type = ZX.VERTEXTYPES.WIRE
-  } else if (circumference >
-    rectOverCirc * (circOfPerfectCircle + bboxPerimeter)) {
-    //Probably a rectangle
-    data.type = ZX.VERTEXTYPES.HADAMARD
-  } else if (circumference >
-    circOverLine * (circOfPerfectCircle + circOfNearLine)) {
-    //Probably a circle
-    data.type = ZX.VERTEXTYPES.HADAMARD
+  // Is it square?
+  if (Math.min(bboxWidth, bboxHeight) / Math.max(bboxWidth, bboxHeight) > 0.5) {
+    // Bounding box is a square:
+    // Does it go out to the corner?
+    if (pointedness > (curveNeeded + (1 - curveNeeded) * Math.sqrt(2))) {
+      // Does it cover a large area?
+      if (hullArea > areaOfPerfectCirle) {
+        data.type = ZX.VERTEXTYPES.HADAMARD
+      } else {
+        data.type = ZX.VERTEXTYPES.WIRE
+      }
+    } else {
+      // Doesn't go out to the corner
+      data.type = ZX.VERTEXTYPES.Z
+    }
   } else {
-    //Give up
-    data.type = ZX.VERTEXTYPES.Z
+    // Probably not a square
+    data.type = ZX.VERTEXTYPES.WIRE
   }
   return data
 }
