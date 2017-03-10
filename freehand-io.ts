@@ -43,9 +43,12 @@ export class DiagramIOHTMLModule
 }
 
 
-export interface IFreehandOnSVGEdge {
+export interface ISVGEdgeData {
     RDPWaypoints: Diagrams.IDiagramPosition[],
     originalPath?: string
+}
+export interface ISVGVertexData {
+    radius: number
 }
 
 export class DiagramWithStreamchange

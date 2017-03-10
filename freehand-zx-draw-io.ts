@@ -8,9 +8,14 @@ import RDP = require("./RamerDouglasPeucker.js")
 import ZX = require("./theory-ZX.js")
 import convexHull = require("convexhull-js")
 
-interface IVertexDataInferred {
+
+
+interface IDataInferred {
   inferred: boolean
 }
+
+type IVertexData = IDataInferred & ZX.IVertexData & DiagramIO.ISVGVertexData
+type IEdgeData = ZX.IEdgeData & DiagramIO.ISVGEdgeData
 
 enum ENUMSVGDrawingType { PATH, CIRCLE, RECT }
 interface ISVGColoured {
@@ -36,7 +41,7 @@ type ISVGAllowed = (ISVGCircle | ISVGPath | ISVGRect) & ISVGColoured
 class SVGDrawableElement {
   type: ENUMSVGDrawingType
   dataRect?: ISVGRect
-  dataPath?: DiagramIO.IFreehandOnSVGEdge
+  dataPath?: DiagramIO.ISVGEdgeData
   dataCircle?: ISVGCircle
   color: ISVGColoured
 }
@@ -175,7 +180,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     var vertexByID: { [index: string]: Diagrams.Vertex } = {}
     var verticesAddedToPacket: { [index: string]: boolean } = {}
     for (let vertex of this.diagMergedVertices.vertices) {
-      if (!(<IVertexDataInferred>vertex.data).inferred) {
+      if (!(<IDataInferred>vertex.data).inferred) {
         packetDiagram.importVertex(vertex)
         verticesAddedToPacket[vertex.id] = true
       }
@@ -202,14 +207,16 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   importPathAsObject:
   (pathAsString: string) => (Diagrams.Edge | Diagrams.Vertex | null)
   = (pathAsString: string) => {
+
+    var radiusDefault
     var originalPath = pathAsString
     pathAsString = pathAsString
       .replace(/[a-zA-Z]/g, '')
       .replace(/[\s,]+/g, ' ')
       .trim()
-    var interpolatedPath = pathInterpolate(pathAsString, 2)
+    var interpolatedPath = pathInterpolate(pathAsString, 5)
     var RDPWaypoints = RDP
-      .RamerDouglasPeucker(interpolatedPath.waypoints, 2)
+      .RamerDouglasPeucker(interpolatedPath.waypoints, 10)
       .concat([interpolatedPath.end])
     if (interpolatedPath.length > 10) {
 
@@ -225,20 +232,29 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         itIsAnEdge = false
       }
       var r: (Diagrams.Edge | Diagrams.Vertex) // result
+
+      var tempVertexData: IVertexData = {
+        type: ZX.VERTEXTYPES.WIRE,
+        label: "",
+        radius: radiusDefault,
+        inferred: true
+      }
+
       if (itIsAnEdge) {
         var vStart = new Diagrams.Vertex(start)
-        vStart.data = <IVertexDataInferred>{ inferred: true }
+        vStart.data = tempVertexData
         this.diagUserDrawingOnly.importVertex(vStart)
         var vEnd = new Diagrams.Vertex(end)
-        vEnd.data = <IVertexDataInferred>{ inferred: true }
+        vEnd.data = tempVertexData
         this.diagUserDrawingOnly.importVertex(vEnd)
 
         r = new Diagrams.Edge(vStart, vEnd)
-        r.data = <DiagramIO.IFreehandOnSVGEdge & ZX.IEdgeData>{
+        var edgeData: IEdgeData = {
           type: ZX.EDGETYPES.PLAIN,
           RDPWaypoints: pathToPosnList(RDPWaypoints),
           originalPath: originalPath
         }
+        r.data = edgeData
         this.diagUserDrawingOnly.importEdge(r)
       } else {
         var midpointX = interpolatedPath.bbox[0]
@@ -273,7 +289,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     if (diagram.toJSON() !== this.outputDiagram.toJSON()) {
       this.paths = []
       for (let edge of diagram.edges) {
-        var data = <ZX.IEdgeData & DiagramIO.IFreehandOnSVGEdge>edge.data
+        var data = <ZX.IEdgeData & DiagramIO.ISVGEdgeData>edge.data
         switch (data.type) {
           case ZX.EDGETYPES.PLAIN:
             var edgePath: SVGDrawableElement = {
@@ -526,14 +542,13 @@ function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
   var allPoints = waypointLists.reduce(function (a, b) {
     return a.concat(b)
   })
-  var data: ZX.IVertexData = {
+  var data: IVertexData = {
+    inferred: false,
     type: ZX.VERTEXTYPES.X,
-    label: ""
+    label: "",
+    radius: 0
   }
   var hull = <Diagrams.IDiagramPosition[]>convexHull(allPoints)
-  if (hull.length < 3) {
-    return null
-  }
   var h0 = hull[0]
   var h1 = hull[1]
   var he = hull[hull.length - 1]
@@ -605,22 +620,44 @@ function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
   }
 
   // Now examine the angles:
-  console.log(angles)
   var anglesModQuarter = angles.map(function (a) {
     return Math.abs(a % Math.PI / 2)
   })
   var angleSum = anglesModQuarter.reduce(function (a, b) { return a + b })
   var angleAvg = angleSum / anglesModQuarter.length
 
-  var bboxCirc = 2 * (bboxBottom - bboxTop) + 2 * (bboxRight - bboxLeft)
-  var diameter = Math.min(bboxBottom - bboxTop, bboxRight - bboxLeft)
+  var bboxHeight = bboxBottom - bboxTop
+  var bboxWidth = bboxRight - bboxLeft
+
+  var bboxPerimeter = 2 * bboxWidth + 2 * bboxHeight
+  var diameter = Math.min(bboxWidth, bboxHeight)
+  var diagonal = Math.pow(Math.pow(bboxWidth, 2) + Math.pow(bboxHeight, 2), 0.5)
   var circOfPerfectCircle = Math.PI * diameter
-  if (circumference < 0.5 * (circOfPerfectCircle + bboxCirc)) {
-    //Probably a circle
-    data.type = ZX.VERTEXTYPES.Z
-  } else {
+  var circOfNearLine = 2 * diagonal
+
+  data.radius = diagonal / 2
+
+  // biasses:
+  var rectOverCirc = 0.8
+  var circOverLine = 0.5
+
+  // Do we think it's actually a wire not a vertex?
+  var distanceStartToEnd = distanceAB(allPoints[0], allPoints[1])
+
+  if (distanceStartToEnd > (0.4 * circOfNearLine)) {
+    //Probably a line
+    data.type = ZX.VERTEXTYPES.WIRE
+  } else if (circumference >
+    rectOverCirc * (circOfPerfectCircle + bboxPerimeter)) {
     //Probably a rectangle
     data.type = ZX.VERTEXTYPES.HADAMARD
+  } else if (circumference >
+    circOverLine * (circOfPerfectCircle + circOfNearLine)) {
+    //Probably a circle
+    data.type = ZX.VERTEXTYPES.HADAMARD
+  } else {
+    //Give up
+    data.type = ZX.VERTEXTYPES.Z
   }
   return data
 }
