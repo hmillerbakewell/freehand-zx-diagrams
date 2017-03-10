@@ -58,7 +58,6 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   svgElement: SVG.Container
   private lastTimeTriggered: number
   mousePos: SVG.Point
-  closingVertexDistance: number = 20
   closingEdgeEdgeDistance: number = 20
   closingEdgeVertexDistance: number = 20
 
@@ -208,7 +207,6 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
   (pathAsString: string) => (Diagrams.Edge | Diagrams.Vertex | null)
   = (pathAsString: string) => {
 
-    var radiusDefault
     var originalPath = pathAsString
     pathAsString = pathAsString
       .replace(/[a-zA-Z]/g, '')
@@ -218,71 +216,51 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     var RDPWaypoints = RDP
       .RamerDouglasPeucker(interpolatedPath.waypoints, 10)
       .concat([interpolatedPath.end])
-    if (interpolatedPath.length > 10) {
 
-      var pathAsPositions = pathToPosnList(RDPWaypoints)
-      var itIsAnEdge = true
-      // Is it closed?
+
+    var nodeData = recogniseNodeData([pathToPosnList(RDPWaypoints)])
+
+    var r: (Diagrams.Vertex | Diagrams.Edge)
+
+    var tempVertexData: IVertexData = {
+      inferred: true,
+      label: "",
+      radius: 5,
+      type: ZX.VERTEXTYPES.WIRE
+    }
+
+    if (nodeData.type === ZX.VERTEXTYPES.WIRE ||
+      nodeData.radius > 50) {
+      // Either it is small and looks like a wire, or it is huge:
       var start = { x: interpolatedPath.start[0], y: interpolatedPath.start[1] }
       var end = { x: interpolatedPath.end[0], y: interpolatedPath.end[1] }
-      if (
-        Diagrams.posnDistanceSquared(start, end)
-        <
-        Math.pow(this.closingVertexDistance, 2)) {
-        itIsAnEdge = false
-      }
-      var r: (Diagrams.Edge | Diagrams.Vertex) // result
 
-      var tempVertexData: IVertexData = {
-        type: ZX.VERTEXTYPES.WIRE,
-        label: "",
-        radius: radiusDefault,
-        inferred: true
-      }
+      var vStart = new Diagrams.Vertex(start)
+      vStart.data = tempVertexData
+      this.diagUserDrawingOnly.importVertex(vStart)
+      var vEnd = new Diagrams.Vertex(end)
+      vEnd.data = tempVertexData
+      this.diagUserDrawingOnly.importVertex(vEnd)
 
-      if (itIsAnEdge) {
-        var vStart = new Diagrams.Vertex(start)
-        vStart.data = tempVertexData
-        this.diagUserDrawingOnly.importVertex(vStart)
-        var vEnd = new Diagrams.Vertex(end)
-        vEnd.data = tempVertexData
-        this.diagUserDrawingOnly.importVertex(vEnd)
-
-        r = new Diagrams.Edge(vStart, vEnd)
-        var edgeData: IEdgeData = {
-          type: ZX.EDGETYPES.PLAIN,
-          RDPWaypoints: pathToPosnList(RDPWaypoints),
-          originalPath: originalPath
-        }
-        r.data = edgeData
-        this.diagUserDrawingOnly.importEdge(r)
-      } else {
-        var midpointX = interpolatedPath.bbox[0]
-          + (interpolatedPath.bbox[2] / 2)
-        var midpointY = interpolatedPath.bbox[1]
-          + (interpolatedPath.bbox[3] / 2)
-        r = new Diagrams.Vertex({ x: midpointX, y: midpointY })
-        r.data = recogniseNodeData([pathToPosnList(RDPWaypoints)])
-        /*
-        var prevPoint
-        for (var hullPoint of hullReturn) {
-          var v = new Diagrams.Vertex({ x: hullPoint.x, y: hullPoint.y })
-          v.data = { inferred: false, type: ZX.VERTEXTYPES.HADAMARD }
-          if (prevPoint) {
-            var e = new Diagrams.Edge(v, prevPoint)
-            e.data = {}
-            this.diagUserDrawingOnly.importEdge(e)
-          }
-          this.diagUserDrawingOnly.importVertex(v)
-          prevPoint = v
-        }
-        */
-        this.diagUserDrawingOnly.importVertex(r)
+      r = new Diagrams.Edge(vStart, vEnd)
+      var edgeData: IEdgeData = {
+        type: ZX.EDGETYPES.PLAIN,
+        RDPWaypoints: pathToPosnList(RDPWaypoints),
+        originalPath: originalPath
       }
-      return r
+      r.data = edgeData
+      this.diagUserDrawingOnly.importEdge(r)
     } else {
-      return null
+      // It is therefore small, and not a wire
+      var midpointX = interpolatedPath.bbox[0]
+        + (interpolatedPath.bbox[2] / 2)
+      var midpointY = interpolatedPath.bbox[1]
+        + (interpolatedPath.bbox[3] / 2)
+      r = new Diagrams.Vertex({ x: midpointX, y: midpointY })
+      r.data = nodeData
+      this.diagUserDrawingOnly.importVertex(r)
     }
+    return r
   }
   importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
   = (diagram) => {
