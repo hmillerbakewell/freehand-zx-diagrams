@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "@types/node": "^7.0.5",
+    "convexhull-js": "^1.0.0",
     "jquery": "^3.1.1",
     "normalize.css": "^5.0.0",
     "path-interpolate": "file:./local_node/path-interpolate-1.0.1.tgz",

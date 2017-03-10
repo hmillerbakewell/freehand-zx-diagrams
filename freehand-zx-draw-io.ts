@@ -6,6 +6,7 @@ import $ = require("jquery")
 import DiagramIO = require("./freehand-io.js")
 import RDP = require("./RamerDouglasPeucker.js")
 import ZX = require("./theory-ZX.js")
+import convexHull = require("convexhull-js")
 
 interface IVertexDataInferred {
   inferred: boolean
@@ -245,10 +246,21 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
         var midpointY = interpolatedPath.bbox[1]
           + (interpolatedPath.bbox[3] / 2)
         r = new Diagrams.Vertex({ x: midpointX, y: midpointY })
-        r.data = <ZX.IVertexData>{
-          type: ZX.VERTEXTYPES.Z,
-          label: ""
+        r.data = recogniseNodeData([pathToPosnList(RDPWaypoints)])
+        /*
+        var prevPoint
+        for (var hullPoint of hullReturn) {
+          var v = new Diagrams.Vertex({ x: hullPoint.x, y: hullPoint.y })
+          v.data = { inferred: false, type: ZX.VERTEXTYPES.HADAMARD }
+          if (prevPoint) {
+            var e = new Diagrams.Edge(v, prevPoint)
+            e.data = {}
+            this.diagUserDrawingOnly.importEdge(e)
+          }
+          this.diagUserDrawingOnly.importVertex(v)
+          prevPoint = v
         }
+        */
         this.diagUserDrawingOnly.importVertex(r)
       }
       return r
@@ -507,4 +519,108 @@ function pathToPosnList(path: number[][]) {
 
 function interpolate(lambda: number, a: number, b: number) {
   return ((1 - lambda) * a + lambda * b)
+}
+
+
+function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
+  var allPoints = waypointLists.reduce(function (a, b) {
+    return a.concat(b)
+  })
+  var data: ZX.IVertexData = {
+    type: ZX.VERTEXTYPES.X,
+    label: ""
+  }
+  var hull = <Diagrams.IDiagramPosition[]>convexHull(allPoints)
+  if (hull.length < 3) {
+    return null
+  }
+  var h0 = hull[0]
+  var h1 = hull[1]
+  var he = hull[hull.length - 1]
+  var someMid = {
+    x: 0.4 * h0.x + 0.3 * h1.x + 0.3 * he.x,
+    y: 0.4 * h0.y + 0.3 * h1.y + 0.3 * he.y
+  }
+
+  var angleFromMidpoint = function (a: Diagrams.IDiagramPosition) {
+    var modifier = 0
+    if (a.y < someMid.y) {
+      modifier = Math.PI
+    }
+    return Math.atan((someMid.x - a.x) / (someMid.y - a.y)) + modifier
+  }
+  var roundTheOutside = hull.sort(function (a, b) {
+    var dax = someMid.x - a.x
+    var dbx = someMid.x - b.x
+
+    var thetaA = angleFromMidpoint(a)
+    var thetaB = angleFromMidpoint(b)
+
+    return thetaA - thetaB
+    /*
+        if (dax >= 0 && dbx >= 0) {
+          //both to the right of the midpoint
+          return b.y - a.y
+        } else if (dax < 0 && dbx < 0) {
+          // both to the left of the midpoint
+          return a.y - b.y
+        } else {
+          //either side of the midpoint
+          return a.x - b.x
+        }
+        */
+  })
+  var outsideArray = roundTheOutside.map(function (a) { return [a.x, a.y] })
+  //var rdpOutside = RDP.RamerDouglasPeucker(outsideArray, 1)
+  var distanceAB = function (
+    a: Diagrams.IDiagramPosition,
+    b: Diagrams.IDiagramPosition) {
+    var dx = a.x - b.x
+    var dy = a.y - b.y
+    return Math.pow(dx * dx + dy * dy, 0.5)
+  }
+  var circumference = 0
+  var bboxLeft = outsideArray[0][0]
+  var bboxRight = outsideArray[0][0]
+  var bboxTop = outsideArray[0][1]
+  var bboxBottom = outsideArray[0][1]
+  var numPoints = outsideArray.length
+  var angles: number[] = []
+  for (var i = 0; i < outsideArray.length; i++) {
+    var previousNode = outsideArray[(i - 1 + numPoints) % numPoints]
+    var focusNode = outsideArray[i]
+    var nextNode = outsideArray[(i + 1) % numPoints]
+    bboxTop = Math.min(bboxTop, focusNode[1])
+    bboxBottom = Math.max(bboxBottom, focusNode[1])
+    bboxLeft = Math.min(bboxLeft, focusNode[0])
+    bboxRight = Math.max(bboxRight, focusNode[0])
+    circumference += distanceAB(
+      { x: focusNode[0], y: focusNode[1] },
+      { x: nextNode[0], y: nextNode[1] })
+    var a = [previousNode[0] - focusNode[0], previousNode[1] - focusNode[1]]
+    var b = [nextNode[0] - focusNode[0], nextNode[1] - focusNode[1]]
+    var la = Math.pow(a[0] * a[0] + a[1] * a[1], 0.5)
+    var lb = Math.pow(b[0] * b[0] + b[1] * b[1], 0.5)
+    angles.push(Math.acos((a[0] * b[0] + a[1] * b[1]) / (la * lb)))
+  }
+
+  // Now examine the angles:
+  console.log(angles)
+  var anglesModQuarter = angles.map(function (a) {
+    return Math.abs(a % Math.PI / 2)
+  })
+  var angleSum = anglesModQuarter.reduce(function (a, b) { return a + b })
+  var angleAvg = angleSum / anglesModQuarter.length
+
+  var bboxCirc = 2 * (bboxBottom - bboxTop) + 2 * (bboxRight - bboxLeft)
+  var diameter = Math.min(bboxBottom - bboxTop, bboxRight - bboxLeft)
+  var circOfPerfectCircle = Math.PI * diameter
+  if (circumference < 0.5 * (circOfPerfectCircle + bboxCirc)) {
+    //Probably a circle
+    data.type = ZX.VERTEXTYPES.Z
+  } else {
+    //Probably a rectangle
+    data.type = ZX.VERTEXTYPES.HADAMARD
+  }
+  return data
 }
