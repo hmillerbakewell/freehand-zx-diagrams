@@ -284,75 +284,76 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             this.paths.push(edgePath)
             break;
         }
+      }
 
-        for (let vertex of diagram.vertices) {
-          switch ((<ZX.IVertexData>vertex.data).type) {
-            case ZX.VERTEXTYPES.INPUT:
-            case ZX.VERTEXTYPES.OUTPUT:
-            case ZX.VERTEXTYPES.WIRE:
-              var smallBox: SVGDrawableElement = {
-                type: ENUMSVGDrawingType.RECT,
-                dataRect: {
-                  width: 1,
-                  height: 1,
-                  x: vertex.pos.x,
-                  y: vertex.pos.y
-                },
-                color: {
-                  strokeData: "black",
-                  fillColor: "black"
-                }
+      for (let vertex of diagram.vertices) {
+        switch ((<ZX.IVertexData>vertex.data).type) {
+          case ZX.VERTEXTYPES.INPUT:
+          case ZX.VERTEXTYPES.OUTPUT:
+          case ZX.VERTEXTYPES.WIRE:
+            var smallBox: SVGDrawableElement = {
+              type: ENUMSVGDrawingType.RECT,
+              dataRect: {
+                width: 1,
+                height: 1,
+                x: vertex.pos.x,
+                y: vertex.pos.y
+              },
+              color: {
+                strokeData: "black",
+                fillColor: "black"
+              }
 
+            }
+            this.paths.push(smallBox)
+            break;
+          case ZX.VERTEXTYPES.HADAMARD:
+            var radius = (vertex.data.radius) | 10
+            var hadamardBox: SVGDrawableElement = {
+              type: ENUMSVGDrawingType.RECT,
+              dataRect: {
+                width: radius,
+                height: radius,
+                x: vertex.pos.x - radius / 2,
+                y: vertex.pos.y - radius / 2
+              },
+              color: {
+                strokeData: "black",
+                fillColor: "white"
               }
-              this.paths.push(smallBox)
-              break;
-            case ZX.VERTEXTYPES.HADAMARD:
-              var hadamardBox: SVGDrawableElement = {
-                type: ENUMSVGDrawingType.RECT,
-                dataRect: {
-                  width: 10,
-                  height: 10,
-                  x: vertex.pos.x - 5,
-                  y: vertex.pos.y - 5
-                },
-                color: {
-                  strokeData: "black",
-                  fillColor: "white"
-                }
+            }
+            this.paths.push(hadamardBox)
+            break;
+          case ZX.VERTEXTYPES.Z:
+            var zNode: SVGDrawableElement = {
+              type: ENUMSVGDrawingType.CIRCLE,
+              dataCircle: {
+                radius: (vertex.data.radius) | 10,
+                cx: vertex.pos.x,
+                cy: vertex.pos.y
+              },
+              color: {
+                strokeData: "black",
+                fillColor: "white"
               }
-              this.paths.push(hadamardBox)
-              break;
-            case ZX.VERTEXTYPES.Z:
-              var zNode: SVGDrawableElement = {
-                type: ENUMSVGDrawingType.CIRCLE,
-                dataCircle: {
-                  radius: 10,
-                  cx: vertex.pos.x,
-                  cy: vertex.pos.y
-                },
-                color: {
-                  strokeData: "black",
-                  fillColor: "white"
-                }
+            }
+            this.paths.push(zNode)
+            break;
+          case ZX.VERTEXTYPES.X:
+            var xNode: SVGDrawableElement = {
+              type: ENUMSVGDrawingType.CIRCLE,
+              dataCircle: {
+                radius: (vertex.data.radius) | 10,
+                cx: vertex.pos.x,
+                cy: vertex.pos.y
+              },
+              color: {
+                strokeData: "black",
+                fillColor: "black"
               }
-              this.paths.push(zNode)
-              break;
-            case ZX.VERTEXTYPES.X:
-              var xNode: SVGDrawableElement = {
-                type: ENUMSVGDrawingType.CIRCLE,
-                dataCircle: {
-                  radius: 10,
-                  cx: vertex.pos.x,
-                  cy: vertex.pos.y
-                },
-                color: {
-                  strokeData: "black",
-                  fillColor: "black"
-                }
-              }
-              this.paths.push(xNode)
-              break;
-          }
+            }
+            this.paths.push(xNode)
+            break;
         }
       }
       this.drawAllShapes()
@@ -676,7 +677,12 @@ function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
       }
     } else {
       // Doesn't go out to the corner
-      data.type = ZX.VERTEXTYPES.Z
+      // Does it cover a large area?
+      if (hullArea > areaOfPerfectCirle * 0.75) {
+        data.type = ZX.VERTEXTYPES.Z
+      } else {
+        data.type = ZX.VERTEXTYPES.WIRE
+      }
     }
   } else {
     // Probably not a square

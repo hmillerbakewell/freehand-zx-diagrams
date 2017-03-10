@@ -80,8 +80,8 @@ export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
     let endPos = vertexByID[edge.end].pos
     var pathCommand = ""
     pathCommand += `M${startPos.x} ${startPos.y} `
-    if ((<DiagramIO.IFreehandOnSVGEdge>edge.data).RDPWaypoints) {
-      var waypoints = (<DiagramIO.IFreehandOnSVGEdge>edge.data).RDPWaypoints
+    if ((<DiagramIO.ISVGEdgeData>edge.data).RDPWaypoints) {
+      var waypoints = (<DiagramIO.ISVGEdgeData>edge.data).RDPWaypoints
       // Calculate tangents:
       // vertex start -> waypoint 0
 

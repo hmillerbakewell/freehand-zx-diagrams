@@ -118,7 +118,7 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                 let targetVertex = vertexLookup[edge.tgt]
 
                 let dummyEdge = new Diagrams.Edge(sourceVertex, targetVertex)
-                let data: DiagramIO.IFreehandOnSVGEdge & ZX.IEdgeData = {
+                let data: DiagramIO.ISVGEdgeData & ZX.IEdgeData = {
                     RDPWaypoints: [sourceVertex.pos, targetVertex.pos],
                     type: ZX.EDGETYPES.PLAIN
                 }
