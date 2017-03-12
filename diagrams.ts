@@ -120,7 +120,15 @@ export class Diagram
   importRewriteDiagram: (diagram: IDiagramOutput) => void
   = (diagram: IDiagramOutput) => {
     var previousToJSON = this.toJSON()
-    var newJSONparse = <IDiagramOutput>JSON.parse(diagram.toJSON())
+    var newJSONparse
+    if (diagram.toJSON) {
+      // If the passed object is a fully formed diagram
+      // then is has methods attached we can call
+      newJSONparse = <IDiagramOutput>JSON.parse(diagram.toJSON())
+    } else {
+      // otherwise, it is just a bundle of edges and vertices
+      newJSONparse = diagram
+    }
     this.edges = []
     this.vertices = []
     this.vertexById = {}
