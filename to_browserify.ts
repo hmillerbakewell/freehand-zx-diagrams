@@ -6,6 +6,7 @@ import FreehandOnSVGIOModule = require("./zx-io-draw.js")
 import ZXJSONIOModule = require("./zx-io-json.js")
 import ZXSVGIOModule = require("./zx-io-svg.js")
 import DiagramsJSONModule = require("./diagrams-io-json.js")
+import ZXTikZIOModule = require("./zx-io-tikz.js")
 
 var D = new Diagrams.Diagram();
 $(document).ready();
@@ -24,6 +25,8 @@ var zxSVG = new ZXSVGIOModule.ZXSVGIOModule()
 bindToD(zxSVG)
 var diagramsJSON = new DiagramsJSONModule.DiagramsJSONIOModule()
 bindToD(diagramsJSON)
+var zxTikZ = new ZXTikZIOModule.ZXTikZIOModule()
+bindToD(zxTikZ)
 
 $(document).ready(function () {
     //zx-drawing
@@ -33,9 +36,13 @@ $(document).ready(function () {
     $(zxJSON.UISelector).change(zxJSON.onJSONChange)
     //zx-SVG
     zxSVG.SVG = SVG("svgOutputHolder")
+    //zx-TikZ
+    zxTikZ.UISelector = "#ZXTikZIOModule > .main > #JSON"
+    $(zxTikZ.UISelector).change(zxTikZ.onJSONChange)
     //diagrams-JSON
     diagramsJSON.UISelector = "#DiagramsJSONIOModule > .main > #JSON"
     $(diagramsJSON.UISelector).change(diagramsJSON.onJSONChange)
+
 
 
     D.fireChange()

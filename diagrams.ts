@@ -140,8 +140,8 @@ export class Diagram
     }
     for (var edge of newJSONparse.edges) {
       var e = new Edge(
-        diagram.vertexById[edge.start],
-        diagram.vertexById[edge.end])
+        this.vertexById[edge.start],
+        this.vertexById[edge.end])
       e.id = edge.id
       e.data = edge.data
       this.importEdgeDontFire(e)
