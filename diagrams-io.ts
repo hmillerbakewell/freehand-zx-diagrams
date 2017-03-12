@@ -1,7 +1,4 @@
 import Diagrams = require("./diagrams.js")
-import SVG = require("svgjs")
-import pathInterpolate = require("path-interpolate")
-import $ = require("jquery")
 
 
 // IDEALLY EXTEND THESE CLASSES BEFORE USING THEM.

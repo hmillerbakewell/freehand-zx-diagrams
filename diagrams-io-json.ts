@@ -1,5 +1,4 @@
 import Diagrams = require("./diagrams.js")
-import pathInterpolate = require("path-interpolate")
 import $ = require("jquery")
 import IO = require("./diagrams-io")
 

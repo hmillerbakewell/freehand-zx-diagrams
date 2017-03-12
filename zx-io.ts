@@ -1,9 +1,8 @@
 import Diagrams = require("./diagrams.js")
-import SVG = require("svgjs")
-import pathInterpolate = require("path-interpolate")
-import $ = require("jquery")
 import IO = require("./diagrams-io.js")
 import ZX = require("./zx-theory.js")
+
+export type ICoord = Diagrams.IDiagramPosition
 
 export type IVertexData = ZX.IVertexData & IO.ISVGVertexData
 export type IEdgeData = ZX.IEdgeData & IO.ISVGEdgeData

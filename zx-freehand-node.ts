@@ -1,17 +1,12 @@
-import Diagrams = require("./diagrams.js")
-import SVG = require("svgjs")
-import pathInterpolate = require("path-interpolate")
-import waypointsToSmoothPath = require("./waypoints-to-smooth-path.js")
-import $ = require("jquery")
 import RDP = require("./RamerDouglasPeucker.js")
 import ZX = require("./zx-theory.js")
 import convexHull = require("convexhull-js")
 import ZXIO = require("./zx-io.js")
 
-type coord = Diagrams.IDiagramPosition
+type ICoord = ZXIO.ICoord
 
 export function recogniseNodeDataSimple(
-    waypointLists: Diagrams.IDiagramPosition[][]
+    waypointLists: ZXIO.ICoord[][]
 ) {
 
     var acceptableBBoxSize = 30
@@ -26,7 +21,7 @@ export function recogniseNodeDataSimple(
         radius: 0
     }
 
-    var distanceAB = function (a: coord, b: coord) {
+    var distanceAB = function (a: ICoord, b: ICoord) {
         var dx = a.x - b.x
         var dy = a.y - b.y
         return Math.pow(dx * dx + dy * dy, 0.5)
@@ -49,7 +44,7 @@ export function recogniseNodeDataSimple(
 
 
 
-    var hull = <coord[]>convexHull(allPoints)
+    var hull = <ICoord[]>convexHull(allPoints)
     var h0 = hull[0]
     var h1 = hull[1]
     var he = hull[hull.length - 1]
@@ -119,7 +114,7 @@ export function recogniseNodeDataSimple(
     var angleAvg = angleSum / anglesDistQuarter.length
 
     var startPos = { x: outsideArray[0][0], y: outsideArray[0][1] }
-    function areaOfTriangle(a: coord, b: coord, c: coord) {
+    function areaOfTriangle(a: ICoord, b: ICoord, c: ICoord) {
         return Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) / 2
     }
 
@@ -213,9 +208,8 @@ export function recogniseNodeDataSimple(
 }
 
 export function recogniseNodeDataComplex(
-    waypointLists: Diagrams.IDiagramPosition[][]
+    waypointLists: ZXIO.ICoord[][]
 ) {
-    type coord = Diagrams.IDiagramPosition
     var allPoints = waypointLists.reduce(function (a, b) {
         return a.concat(b)
     })
@@ -224,7 +218,7 @@ export function recogniseNodeDataComplex(
         label: "",
         radius: 0
     }
-    var hull = <coord[]>convexHull(allPoints)
+    var hull = <ICoord[]>convexHull(allPoints)
     var h0 = hull[0]
     var h1 = hull[1]
     var he = hull[hull.length - 1]
@@ -233,7 +227,7 @@ export function recogniseNodeDataComplex(
         y: 0.4 * h0.y + 0.3 * h1.y + 0.3 * he.y
     }
 
-    var angleFromMidpoint = function (a: coord) {
+    var angleFromMidpoint = function (a: ICoord) {
         var modifier = 0
         if (a.y < someMid.y) {
             modifier = Math.PI
@@ -250,7 +244,7 @@ export function recogniseNodeDataComplex(
         return thetaA - thetaB
     })
     var outsideArray = roundTheOutside.map(function (a) { return [a.x, a.y] })
-    var distanceAB = function (a: coord, b: coord) {
+    var distanceAB = function (a: ICoord, b: ICoord) {
         var dx = a.x - b.x
         var dy = a.y - b.y
         return Math.pow(dx * dx + dy * dy, 0.5)
@@ -288,7 +282,7 @@ export function recogniseNodeDataComplex(
     var angleAvg = angleSum / anglesDistQuarter.length
 
     var startPos = { x: outsideArray[0][0], y: outsideArray[0][1] }
-    function areaOfTriangle(a: coord, b: coord, c: coord) {
+    function areaOfTriangle(a: ICoord, b: ICoord, c: ICoord) {
         return Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) / 2
     }
 
@@ -384,7 +378,7 @@ export function recogniseNodeDataComplex(
 }
 
 
-var angleAFromB = function (a: coord, midPoint: coord) {
+var angleAFromB = function (a: ICoord, midPoint: ICoord) {
     var modifier = 0
     if (a.y < midPoint.y) {
         modifier = Math.PI
