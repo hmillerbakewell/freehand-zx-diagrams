@@ -15,4 +15,4 @@ export type ISVGCircle = IO.ISVGCircle
 
 export type IInferrable = IO.IDataInferred
 
-export let defaultRadius = 5
+export let defaultRadius = 10

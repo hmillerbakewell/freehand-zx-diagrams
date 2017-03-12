@@ -211,7 +211,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
     var tempVertexData: IInferreableVertexData = {
       inferred: true,
       label: "",
-      radius: 5,
+      radius: ZXIO.defaultRadius,
       type: ZX.VERTEXTYPES.WIRE
     }
 
@@ -271,7 +271,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
       for (let vertex of diagram.vertices) {
         let data = <ZXIO.IVertexData>vertex.data
         let pos = <Diagrams.IDiagramPosition>vertex.pos
-        let radius = (data.radius) || 10
+        let radius = (data.radius) || ZXIO.defaultRadius
         switch (data.type) {
           case ZX.VERTEXTYPES.INPUT:
           case ZX.VERTEXTYPES.OUTPUT:
@@ -337,7 +337,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
               dataCircle: {
                 label: data.label,
                 type: data.type,
-                radius: (data.radius) | 10,
+                radius: (data.radius) | ZXIO.defaultRadius,
                 cx: pos.x,
                 cy: pos.y
               },
@@ -368,7 +368,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
     for (var shape of this.paths) {
       switch (shape.type) {
         case ENUMSVGDrawingType.PATH:
-          if (shape.dataPath.path) {
+          if (shape.dataPath.path && shape.dataPath.path.length > 0) {
             svgElementCreated = svg.path(shape.dataPath.path)
           }
           else if (shape.dataPath.RDPWaypoints) {
@@ -376,7 +376,6 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
               waypointsToSmoothPath.smooth(shape.dataPath.RDPWaypoints)
             )
           } else {
-
           }
           break;
         case ENUMSVGDrawingType.CIRCLE:

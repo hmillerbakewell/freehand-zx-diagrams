@@ -171,10 +171,12 @@ export function TikZtoZX(inputString: string) {
         let style = edgeMatches[1]
         let start = edgeMatches[2]
         let end = edgeMatches[3]
-        let e = new Diagrams.Edge(d.vertexById[start], d.vertexById[end])
+        let startVertex = d.vertexById[start]
+        let endVertex = d.vertexById[end]
+        let e = new Diagrams.Edge(startVertex, endVertex)
         let data: ZXIO.IEdgeData = {
             type: ZX.EDGETYPES.PLAIN,
-            RDPWaypoints: [],
+            RDPWaypoints:  [startVertex.pos, endVertex.pos],
             path: ""
         }
         e.data = data
