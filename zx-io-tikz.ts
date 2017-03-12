@@ -37,16 +37,24 @@ interface ITikZEdge {
 enum NODESTYLES { GREENNODE, REDNODE, INPUTOUTPUT, WIRE, HADAMARD, BOX, NONE }
 enum EDGESTYLES { PLAIN }
 
-var styleEdgeLookup: { [id: number]: string } = {}
-styleEdgeLookup[EDGESTYLES.PLAIN] = "-"
-var styleNodeLookup: { [id: number]: string } = {}
-styleNodeLookup[NODESTYLES.GREENNODE] = "gn"
-styleNodeLookup[NODESTYLES.REDNODE] = "rn"
-styleNodeLookup[NODESTYLES.INPUTOUTPUT] = "none"
-styleNodeLookup[NODESTYLES.WIRE] = "none"
-styleNodeLookup[NODESTYLES.HADAMARD] = "H"
-styleNodeLookup[NODESTYLES.BOX] = "block"
-styleNodeLookup[NODESTYLES.NONE] = "none"
+var edgeStyleLookup: { [id: number]: string } = {}
+edgeStyleLookup[EDGESTYLES.PLAIN] = "-"
+var nodeStyleLookup: { [id: number]: string } = {}
+nodeStyleLookup[NODESTYLES.GREENNODE] = "gn"
+nodeStyleLookup[NODESTYLES.REDNODE] = "rn"
+nodeStyleLookup[NODESTYLES.INPUTOUTPUT] = "none"
+nodeStyleLookup[NODESTYLES.WIRE] = "none"
+nodeStyleLookup[NODESTYLES.HADAMARD] = "H"
+nodeStyleLookup[NODESTYLES.BOX] = "block"
+nodeStyleLookup[NODESTYLES.NONE] = "none"
+
+var styleNodeLookup: { [id: string]: NODESTYLES } = {}
+styleNodeLookup["plain"] = NODESTYLES.NONE
+styleNodeLookup["H"] = NODESTYLES.HADAMARD
+styleNodeLookup["none"] = NODESTYLES.NONE
+styleNodeLookup["block"] = NODESTYLES.NONE
+styleNodeLookup["gn"] = NODESTYLES.GREENNODE
+styleNodeLookup["rn"] = NODESTYLES.REDNODE
 
 export function ZXToTikZ(diagram: Diagrams.IDiagramOutput) {
     var s = ""
@@ -98,7 +106,7 @@ export function ZXToTikZ(diagram: Diagrams.IDiagramOutput) {
     }
     s += `\\begin{pgfonlayer}{nodelayer}` + '\n'
     for (let node of nodeList) {
-        let style = styleNodeLookup[node.style]
+        let style = nodeStyleLookup[node.style]
         let label = node.label.length > 0 ? `$${node.label}$` : ""
         s += `\t\\node [style=${style}] (${node.reference}) `
         s += `at (${node.position.x}, ${node.position.y})   {${label}};`
@@ -107,11 +115,73 @@ export function ZXToTikZ(diagram: Diagrams.IDiagramOutput) {
     s += `\\end{pgfonlayer}` + '\n'
     s += `\\begin{pgfonlayer} {edgelayer}` + '\n'
     for (let edge of edgeList) {
-        let style = styleEdgeLookup[edge.style]
+        let style = edgeStyleLookup[edge.style]
         s += `\t\\draw[-] (${edge.start}) to (${edge.end});` + '\n'
     }
     s += `\\end{pgfonlayer}` + '\n'
     return s
+}
+
+export function TikZtoZX(inputString: string) {
+    let d = new Diagrams.Diagram()
+    // Gather all the nodes:
+    let regNodeMatch = /\\node\s*\[style=(.*)\]\s*\((.*)\)\s*at\s*\((.*)\s*,\s*(.*)\)\s*{(.*)}\s*;/gim
+    let nodeMatches = regNodeMatch.exec(inputString)
+    while (nodeMatches != null) {
+        let style = nodeMatches[1]
+        let id = nodeMatches[2]
+        let pos = {
+            x: parseFloat(nodeMatches[3]),
+            y: parseFloat(nodeMatches[4])
+        }
+        let label = nodeMatches[5]
+        let v = new Diagrams.Vertex(pos)
+        v.id = id
+        let data: ZXIO.IVertexData = {
+            label: label,
+            type: ZX.VERTEXTYPES.Z,
+            radius: ZXIO.defaultRadius
+        }
+        switch (styleNodeLookup[style]) {
+            case NODESTYLES.BOX:
+            case NODESTYLES.HADAMARD:
+                data.type = ZX.VERTEXTYPES.HADAMARD
+                break;
+            case NODESTYLES.INPUTOUTPUT:
+                data.type = ZX.VERTEXTYPES.INPUT
+                break;
+            case NODESTYLES.GREENNODE:
+                data.type = ZX.VERTEXTYPES.Z
+                break;
+            case NODESTYLES.REDNODE:
+                data.type = ZX.VERTEXTYPES.X
+                break;
+            case NODESTYLES.NONE:
+            case NODESTYLES.WIRE:
+                data.type = ZX.VERTEXTYPES.WIRE
+                break;
+        }
+        v.data = data
+        d.importVertex(v)
+        nodeMatches = regNodeMatch.exec(inputString)
+    }
+    let regEdgeMatch = /\\draw\s*\[(.*)\]\s*\((.*)\)\s*to\s*\((.*)\)\s*;/gim
+    let edgeMatches = regEdgeMatch.exec(inputString)
+    while (edgeMatches != null) {
+        let style = edgeMatches[1]
+        let start = edgeMatches[2]
+        let end = edgeMatches[3]
+        let e = new Diagrams.Edge(d.vertexById[start], d.vertexById[end])
+        let data: ZXIO.IEdgeData = {
+            type: ZX.EDGETYPES.PLAIN,
+            RDPWaypoints: [],
+            path: ""
+        }
+        e.data = data
+        d.importEdge(e)
+        edgeMatches = regEdgeMatch.exec(inputString)
+    }
+    return d
 }
 
 
@@ -127,71 +197,15 @@ export class ZXTikZIOModule extends ZXIO.HTMLModule {
     }
     onJSONChange: () => void = () => {
         var parsed: any
+        var packetDiagram: Diagrams.Diagram
+        var inputString: string
         try {
-            //parsed = JSON.parse($(this.UISelector).val())
-        } catch (e) {
-            // TODO flag when JSON is invalid
-        }
-        if (parsed) {
-            /*
-            var packetDiagram = new Diagrams.Diagram()
-            let vertexLookup:
-                { [id: string]: Diagrams.Vertex } = {}
-            for (let wireVertexName in parsed.wire_vertices) {
-                let wireVertex: IQuantoWireVertex = parsed.wire_vertices[wireVertexName]
-                var coordArr = wireVertex.annotation.coord
-                var coord = {
-                    x: coordArr[0],
-                    y: coordArr[1]
-                }
-                let dummyVertex = new Diagrams.Vertex(coord)
-                dummyVertex.pos = coord
-                if (wireVertex.annotation.boundary) {
-                    dummyVertex.data.type = ZX.VERTEXTYPES.WIRE
-                } else {
-                    dummyVertex.data.type = ZX.VERTEXTYPES.INPUT
-                }
-                packetDiagram.importVertex(dummyVertex)
-                vertexLookup[wireVertexName] = dummyVertex
-            }
-
-            for (let nodeVertexName in parsed.node_vertices) {
-                let nodeVertex: IQuantoNodeVertex = parsed.node_vertices[nodeVertexName]
-                var coordArr = nodeVertex.annotation.coord
-                var coord = {
-                    x: coordArr[0],
-                    y: coordArr[1]
-                }
-                let dummyVertex = new Diagrams.Vertex(coord)
-                dummyVertex.pos = coord
-                dummyVertex.id = nodeVertexName
-                let data: ZX.IVertexData = {
-                    type: vertexQuantoLabels[nodeVertex.data.type],
-                    label: nodeVertex.data.value
-                }
-                dummyVertex.data = data
-                packetDiagram.importVertex(dummyVertex)
-                vertexLookup[nodeVertexName] = dummyVertex
-            }
-
-            for (let edgeName in parsed.undir_edges) {
-                let edge: IQuantoEdge = parsed.undir_edges[edgeName]
-                let sourceVertex = vertexLookup[edge.src]
-                let targetVertex = vertexLookup[edge.tgt]
-
-                let dummyEdge = new Diagrams.Edge(sourceVertex, targetVertex)
-                let data: ZXIO.IEdgeData = {
-                    RDPWaypoints: [sourceVertex.pos, targetVertex.pos],
-                    type: ZX.EDGETYPES.PLAIN,
-                    path: null
-                }
-                dummyEdge.data = data
-                dummyEdge.id = edgeName
-                packetDiagram.importEdge(dummyEdge)
-            }
-            
+            inputString = $(this.UISelector).val()
+            packetDiagram = TikZtoZX(inputString)
             this.outputDiagram.importRewriteDiagram(packetDiagram)
-            */
+        } catch (e) {
+            // TODO flag when TikZ is invalid
         }
+
     }
 }
