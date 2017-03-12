@@ -1,11 +1,11 @@
-import Diagrams = require("./freehand-diagrams.js");
-import DiagramsIO = require("./freehand-io.js");
+import Diagrams = require("./diagrams.js");
+import DiagramsIO = require("./diagrams-io.js");
 import $ = require("jquery");
 import SVG = require("svgjs");
-import FreehandOnSVGIOModule = require("./freehand-zx-draw-io.js")
-import ZXJSONIOModule = require("./freehand-zx-json-io.js")
-import ZXSVGIOModule = require("./freehand-zx-svg-io.js")
-import DiagramsJSONModule = require("./freehand-diagrams-json-io.js")
+import FreehandOnSVGIOModule = require("./zx-io-draw.js")
+import ZXJSONIOModule = require("./zx-io-json.js")
+import ZXSVGIOModule = require("./zx-io-svg.js")
+import DiagramsJSONModule = require("./diagrams-io-json.js")
 
 var D = new Diagrams.Diagram();
 $(document).ready();
@@ -37,6 +37,6 @@ $(document).ready(function () {
     diagramsJSON.UISelector = "#DiagramsJSONIOModule > .main > #JSON"
     $(diagramsJSON.UISelector).change(diagramsJSON.onJSONChange)
 
-    
+
     D.fireChange()
 })

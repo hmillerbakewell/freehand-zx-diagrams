@@ -1,53 +1,33 @@
-import Diagrams = require("./freehand-diagrams.js")
+import Diagrams = require("./diagrams.js")
 import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
 import waypointsToSmoothPath = require("./waypoints-to-smooth-path.js")
 import $ = require("jquery")
-import DiagramIO = require("./freehand-io.js")
 import RDP = require("./RamerDouglasPeucker.js")
-import ZX = require("./theory-ZX.js")
-import convexHull = require("convexhull-js")
+import ZX = require("./zx-theory.js")
+import ZXIO = require("./zx-io.js")
+import recognise = require("./zx-freehand-node.js")
 
-
-
-interface IDataInferred {
-  inferred: boolean
-}
-
-type IVertexData = IDataInferred & ZX.IVertexData & DiagramIO.ISVGVertexData
-type IEdgeData = ZX.IEdgeData & DiagramIO.ISVGEdgeData
 
 enum ENUMSVGDrawingType { PATH, CIRCLE, RECT }
 interface ISVGColoured {
   strokeData?: SVG.StrokeData
   fillColor?: string
 }
-interface ISVGPath {
-  path: string
-}
-interface ISVGRect {
-  width: number
-  height: number
-  x: number
-  y: number
-}
-interface ISVGCircle {
-  radius: number
-  cx: number
-  cy: number
-}
+type IInferreableVertexData = ZXIO.IVertexData & ZXIO.IInferrable
 
-type ISVGAllowed = (ISVGCircle | ISVGPath | ISVGRect) & ISVGColoured
+type ISVGAllowed =
+  (ZXIO.ISVGCircle | ZXIO.ISVGPath | ZXIO.ISVGRect) & ISVGColoured
 class SVGDrawableElement {
   type: ENUMSVGDrawingType
-  dataRect?: ISVGRect
-  dataPath?: DiagramIO.ISVGEdgeData
-  dataCircle?: ISVGCircle
+  dataRect?: ZXIO.IVertexData & ZXIO.ISVGRect
+  dataPath?: ZXIO.IEdgeData & ZXIO.ISVGPath
+  dataCircle?: ZXIO.IVertexData & ZXIO.ISVGCircle
   color: ISVGColoured
 }
 
 
-export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
+export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
   takeInput: boolean
   private currentPath: string
   private paths: SVGDrawableElement[] = []
@@ -150,7 +130,8 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     var svgPathWithData = <SVGDrawableElement>{
       type: ENUMSVGDrawingType.PATH,
       dataPath: {
-        originalPath: s,
+        type: ZX.EDGETYPES.PLAIN,
+        path: s,
         RDPWaypoints: null
       },
       color: {
@@ -179,7 +160,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     var vertexByID: { [index: string]: Diagrams.Vertex } = {}
     var verticesAddedToPacket: { [index: string]: boolean } = {}
     for (let vertex of this.diagMergedVertices.vertices) {
-      if (!(<IDataInferred>vertex.data).inferred) {
+      if (!(<IInferreableVertexData>vertex.data).inferred) {
         packetDiagram.importVertex(vertex)
         verticesAddedToPacket[vertex.id] = true
       }
@@ -222,11 +203,11 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       .concat([interpolatedPath.end])
 
 
-    var nodeData = recogniseNodeData([pathToPosnList(RDPWaypoints)])
+    var nodeData = recognise.recogniseNodeData([pathToPosnList(RDPWaypoints)])
 
     var r: (Diagrams.Vertex | Diagrams.Edge)
 
-    var tempVertexData: IVertexData = {
+    var tempVertexData: IInferreableVertexData = {
       inferred: true,
       label: "",
       radius: 5,
@@ -247,10 +228,10 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       this.diagUserDrawingOnly.importVertex(vEnd)
 
       r = new Diagrams.Edge(vStart, vEnd)
-      var edgeData: IEdgeData = {
+      var edgeData: ZXIO.IEdgeData = {
         type: ZX.EDGETYPES.PLAIN,
         RDPWaypoints: pathToPosnList(smootherRDP),
-        originalPath: originalPath
+        path: originalPath
       }
       r.data = edgeData
       this.diagUserDrawingOnly.importEdge(r)
@@ -271,7 +252,7 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     if (diagram.toJSON() !== this.outputDiagram.toJSON()) {
       this.paths = []
       for (let edge of diagram.edges) {
-        var data = <ZX.IEdgeData & DiagramIO.ISVGEdgeData>edge.data
+        var data = <ZX.IEdgeData & ZXIO.IEdgeData>edge.data
         switch (data.type) {
           case ZX.EDGETYPES.PLAIN:
             var edgePath: SVGDrawableElement = {
@@ -287,7 +268,10 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
       }
 
       for (let vertex of diagram.vertices) {
-        switch ((<ZX.IVertexData>vertex.data).type) {
+        let data = <ZXIO.IVertexData>vertex.data
+        let pos = <Diagrams.IDiagramPosition>vertex.pos
+        let radius = (data.radius) || 10
+        switch (data.type) {
           case ZX.VERTEXTYPES.INPUT:
           case ZX.VERTEXTYPES.OUTPUT:
           case ZX.VERTEXTYPES.WIRE:
@@ -296,8 +280,11 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
               dataRect: {
                 width: 1,
                 height: 1,
-                x: vertex.pos.x,
-                y: vertex.pos.y
+                x: pos.x,
+                y: pos.y,
+                type: data.type,
+                label: "",
+                radius: 0.5
               },
               color: {
                 strokeData: "black",
@@ -308,14 +295,16 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             this.paths.push(smallBox)
             break;
           case ZX.VERTEXTYPES.HADAMARD:
-            var radius = (vertex.data.radius) | 10
             var hadamardBox: SVGDrawableElement = {
               type: ENUMSVGDrawingType.RECT,
               dataRect: {
                 width: radius,
                 height: radius,
                 x: vertex.pos.x - radius / 2,
-                y: vertex.pos.y - radius / 2
+                y: vertex.pos.y - radius / 2,
+                radius: radius,
+                type: ZX.VERTEXTYPES.HADAMARD,
+                label: ""
               },
               color: {
                 strokeData: "black",
@@ -328,9 +317,11 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             var zNode: SVGDrawableElement = {
               type: ENUMSVGDrawingType.CIRCLE,
               dataCircle: {
-                radius: (vertex.data.radius) | 10,
-                cx: vertex.pos.x,
-                cy: vertex.pos.y
+                type: data.type,
+                label: data.label,
+                radius: radius,
+                cx: pos.x,
+                cy: pos.y
               },
               color: {
                 strokeData: "black",
@@ -343,9 +334,11 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
             var xNode: SVGDrawableElement = {
               type: ENUMSVGDrawingType.CIRCLE,
               dataCircle: {
-                radius: (vertex.data.radius) | 10,
-                cx: vertex.pos.x,
-                cy: vertex.pos.y
+                label: data.label,
+                type: data.type,
+                radius: (data.radius) | 10,
+                cx: pos.x,
+                cy: pos.y
               },
               color: {
                 strokeData: "black",
@@ -374,8 +367,8 @@ export class FreehandOnSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
     for (var shape of this.paths) {
       switch (shape.type) {
         case ENUMSVGDrawingType.PATH:
-          if (shape.dataPath.originalPath) {
-            svgElementCreated = svg.path(shape.dataPath.originalPath)
+          if (shape.dataPath.path) {
+            svgElementCreated = svg.path(shape.dataPath.path)
           }
           else if (shape.dataPath.RDPWaypoints) {
             svgElementCreated = svg.path(
@@ -521,172 +514,3 @@ function interpolate(lambda: number, a: number, b: number) {
 }
 
 
-function recogniseNodeData(waypointLists: Diagrams.IDiagramPosition[][]) {
-  type coord = Diagrams.IDiagramPosition
-  var allPoints = waypointLists.reduce(function (a, b) {
-    return a.concat(b)
-  })
-  var data: IVertexData = {
-    inferred: false,
-    type: ZX.VERTEXTYPES.X,
-    label: "",
-    radius: 0
-  }
-  var hull = <coord[]>convexHull(allPoints)
-  var h0 = hull[0]
-  var h1 = hull[1]
-  var he = hull[hull.length - 1]
-  var someMid = {
-    x: 0.4 * h0.x + 0.3 * h1.x + 0.3 * he.x,
-    y: 0.4 * h0.y + 0.3 * h1.y + 0.3 * he.y
-  }
-
-  var angleFromMidpoint = function (a: coord) {
-    var modifier = 0
-    if (a.y < someMid.y) {
-      modifier = Math.PI
-    }
-    return Math.atan((someMid.x - a.x) / (someMid.y - a.y)) + modifier
-  }
-  var roundTheOutside = hull.sort(function (a, b) {
-    var dax = someMid.x - a.x
-    var dbx = someMid.x - b.x
-
-    var thetaA = angleFromMidpoint(a)
-    var thetaB = angleFromMidpoint(b)
-
-    return thetaA - thetaB
-  })
-  var outsideArray = roundTheOutside.map(function (a) { return [a.x, a.y] })
-  var distanceAB = function (a: coord, b: coord) {
-    var dx = a.x - b.x
-    var dy = a.y - b.y
-    return Math.pow(dx * dx + dy * dy, 0.5)
-  }
-  var circumference = 0
-  var bboxLeft = outsideArray[0][0]
-  var bboxRight = outsideArray[0][0]
-  var bboxTop = outsideArray[0][1]
-  var bboxBottom = outsideArray[0][1]
-  var numPoints = outsideArray.length
-  var angles: number[] = []
-  for (var i = 0; i < outsideArray.length; i++) {
-    var previousNode = outsideArray[(i - 1 + numPoints) % numPoints]
-    var focusNode = outsideArray[i]
-    var nextNode = outsideArray[(i + 1) % numPoints]
-    bboxTop = Math.min(bboxTop, focusNode[1])
-    bboxBottom = Math.max(bboxBottom, focusNode[1])
-    bboxLeft = Math.min(bboxLeft, focusNode[0])
-    bboxRight = Math.max(bboxRight, focusNode[0])
-    circumference += distanceAB(
-      { x: focusNode[0], y: focusNode[1] },
-      { x: nextNode[0], y: nextNode[1] })
-    var a = [previousNode[0] - focusNode[0], previousNode[1] - focusNode[1]]
-    var b = [nextNode[0] - focusNode[0], nextNode[1] - focusNode[1]]
-    var la = Math.pow(a[0] * a[0] + a[1] * a[1], 0.5)
-    var lb = Math.pow(b[0] * b[0] + b[1] * b[1], 0.5)
-    angles.push(Math.acos((a[0] * b[0] + a[1] * b[1]) / (la * lb)))
-  }
-
-  // Now examine the angles:
-  var anglesDistQuarter = angles.map(function (a) {
-    return Math.abs(((a + Math.PI / 2) % (Math.PI / 2)) - (Math.PI / 2))
-  })
-  var angleSum = anglesDistQuarter.reduce(function (a, b) { return a + b })
-  var angleAvg = angleSum / anglesDistQuarter.length
-
-  var startPos = { x: outsideArray[0][0], y: outsideArray[0][1] }
-  function areaOfTriangle(a: coord, b: coord, c: coord) {
-    return Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) / 2
-  }
-
-  var hullArea = 0;
-  for (var i = 1; i < outsideArray.length - 1; i++) {
-    hullArea += areaOfTriangle(startPos,
-      {
-        x: outsideArray[i][0],
-        y: outsideArray[i][1]
-      },
-      {
-        x: outsideArray[i + 1][0],
-        y: outsideArray[i + 1][1]
-      })
-  }
-
-  var bboxHeight = bboxBottom - bboxTop
-  var bboxWidth = bboxRight - bboxLeft
-
-  var bboxCenter = {
-    x: bboxLeft + 0.5 * (bboxRight - bboxLeft),
-    y: bboxTop + 0.5 * (bboxBottom - bboxTop)
-  }
-
-  var distancesFromMid = outsideArray.map(function (a) {
-    return distanceAB({ x: a[0], y: a[1] }, bboxCenter)
-  })
-  var meanDistanceFromMid = distancesFromMid.reduce(function (a, b) {
-    return a + b
-  }) / distancesFromMid.length
-  var distancesFromMidVariance = distancesFromMid.reduce(function (a, b) {
-    return a + Math.pow(b - meanDistanceFromMid, 2)
-  }) / distancesFromMid.length
-
-
-  var bboxPerimeter = 2 * bboxWidth + 2 * bboxHeight
-  var diameter = Math.min(bboxWidth, bboxHeight)
-  var diagonal = Math.pow(Math.pow(bboxWidth, 2) + Math.pow(bboxHeight, 2), 0.5)
-  var circOfPerfectCircle = Math.PI * diameter
-  var areaOfPerfectCirle = Math.PI * Math.pow(diameter / 2, 2)
-  var areaOfPerfectRect = bboxWidth * bboxHeight
-  var circOfNearLine = 2 * diagonal
-
-  var maxDistanceFromMid = distancesFromMid.reduce(function (a, b) {
-    return Math.max(a, b)
-  })
-
-  var minDistanceFromMid = distancesFromMid.reduce(function (a, b) {
-    return Math.min(a, b)
-  })
-  var distancesFromCirc = distancesFromMid.map(function (a) {
-    return a - diameter / 2
-  })
-  var avgDistanceFromCirc = distancesFromCirc.reduce(function (a, b) {
-    return a + b;
-  }) / distancesFromCirc.length
-
-  var pointedness = maxDistanceFromMid / minDistanceFromMid
-
-  data.radius = diagonal / 2
-
-  // biasses:
-  var rectOverCirc = 0.5
-  var circOverLine = 0.5
-
-  var curveNeeded = 0.1
-
-  // Is it square?
-  if (Math.min(bboxWidth, bboxHeight) / Math.max(bboxWidth, bboxHeight) > 0.5) {
-    // Bounding box is a square:
-    // Does it go out to the corner?
-    if (pointedness > (curveNeeded + (1 - curveNeeded) * Math.sqrt(2))) {
-      // Does it cover a large area?
-      if (hullArea > areaOfPerfectCirle) {
-        data.type = ZX.VERTEXTYPES.HADAMARD
-      } else {
-        data.type = ZX.VERTEXTYPES.WIRE
-      }
-    } else {
-      // Doesn't go out to the corner
-      // Does it cover a large area?
-      if (hullArea > areaOfPerfectCirle * 0.75) {
-        data.type = ZX.VERTEXTYPES.Z
-      } else {
-        data.type = ZX.VERTEXTYPES.WIRE
-      }
-    }
-  } else {
-    // Probably not a square
-    data.type = ZX.VERTEXTYPES.WIRE
-  }
-  return data
-}

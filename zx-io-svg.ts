@@ -1,12 +1,12 @@
-import Diagrams = require("./freehand-diagrams.js")
+import Diagrams = require("./diagrams")
 import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
-import waypointsToSmoothPath = require("./waypoints-to-smooth-path.js")
+import waypointsToSmoothPath = require("./waypoints-to-smooth-path")
 import $ = require("jquery")
-import DiagramIO = require("./freehand-io.js")
-import ZX = require("./theory-ZX.js")
+import ZX = require("./zx-theory")
+import ZXIO = require("./zx-io")
 
-export class ZXSVGIOModule extends DiagramIO.DiagramIOHTMLModule {
+export class ZXSVGIOModule extends ZXIO.HTMLModule {
   constructor() {
     super()
     this.internalDiagram = new Diagrams.Diagram()
@@ -80,8 +80,8 @@ export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
     let endPos = vertexByID[edge.end].pos
     var pathCommand = ""
     pathCommand += `M${startPos.x} ${startPos.y} `
-    if ((<DiagramIO.ISVGEdgeData>edge.data).RDPWaypoints) {
-      var waypoints = (<DiagramIO.ISVGEdgeData>edge.data).RDPWaypoints
+    if ((<ZXIO.IEdgeData>edge.data).RDPWaypoints) {
+      var waypoints = (<ZXIO.IEdgeData>edge.data).RDPWaypoints
       // Calculate tangents:
       // vertex start -> waypoint 0
 

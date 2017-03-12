@@ -1,8 +1,11 @@
-import Diagrams = require("./freehand-diagrams.js")
+import Diagrams = require("./diagrams.js")
 import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
 import $ = require("jquery")
 
+
+// IDEALLY EXTEND THESE CLASSES BEFORE USING THEM.
+// SO THAT EACH <theory>-io.ts LINKS TO EACH USE OF THESE CLASSES IN THAT THEORY
 
 export class DiagramIOModule implements
     Diagrams.IDiagramInput {
@@ -13,6 +16,8 @@ export class DiagramIOModule implements
     }
 }
 
+
+// IO Pipes are an exception; they should be used without extension
 export class IOPipe implements Diagrams.IStreamListener {
     private _upstreamDiagram: Diagrams.IDiagramOutput & Diagrams.IStreamCaller
     private _downstreamDiagram: Diagrams.IDiagramInput
@@ -43,12 +48,33 @@ export class DiagramIOHTMLModule
 }
 
 
+// SVG Interfaces
+
 export interface ISVGEdgeData {
     RDPWaypoints: Diagrams.IDiagramPosition[],
-    originalPath?: string
+    path: string
 }
 export interface ISVGVertexData {
     radius: number
+}
+
+export interface ISVGPath {
+    path: string
+}
+export interface ISVGRect {
+    width: number
+    height: number
+    x: number
+    y: number
+}
+export interface ISVGCircle {
+    radius: number
+    cx: number
+    cy: number
+}
+
+export interface IDataInferred {
+    inferred: boolean
 }
 
 export class DiagramWithStreamchange

@@ -1,9 +1,9 @@
-import Diagrams = require("./freehand-diagrams.js")
+import Diagrams = require("./diagrams.js")
 import pathInterpolate = require("path-interpolate")
 import $ = require("jquery")
-import DiagramIO = require("./freehand-io.js")
+import IO = require("./diagrams-io")
 
-export class DiagramsJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
+export class DiagramsJSONIOModule extends IO.DiagramIOHTMLModule {
     constructor() {
         super()
     }

@@ -1,9 +1,9 @@
-import Diagrams = require("./freehand-diagrams.js")
+import Diagrams = require("./diagrams.js")
 import SVG = require("svgjs")
 import pathInterpolate = require("path-interpolate")
 import $ = require("jquery")
-import DiagramIO = require("./freehand-io.js")
-import ZX = require("./theory-ZX.js")
+import ZX = require("./zx-theory.js")
+import ZXIO = require("./zx-io.js")
 
 let quantoVertexLabels: { [id: number]: string } = {}
 quantoVertexLabels[ZX.VERTEXTYPES.WIRE] = "wire"
@@ -52,7 +52,7 @@ export interface IQuantoIO {
     undir_edges: { [index: string]: IQuantoEdge }
 }
 
-export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
+export class ZXJSONIOModule extends ZXIO.HTMLModule {
     constructor() {
         super()
     }
@@ -118,9 +118,10 @@ export class ZXJSONIOModule extends DiagramIO.DiagramIOHTMLModule {
                 let targetVertex = vertexLookup[edge.tgt]
 
                 let dummyEdge = new Diagrams.Edge(sourceVertex, targetVertex)
-                let data: DiagramIO.ISVGEdgeData & ZX.IEdgeData = {
+                let data: ZXIO.IEdgeData = {
                     RDPWaypoints: [sourceVertex.pos, targetVertex.pos],
-                    type: ZX.EDGETYPES.PLAIN
+                    type: ZX.EDGETYPES.PLAIN,
+                    path: null
                 }
                 dummyEdge.data = data
                 dummyEdge.id = edgeName
