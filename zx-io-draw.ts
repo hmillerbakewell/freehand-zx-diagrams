@@ -203,7 +203,9 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
       .concat([interpolatedPath.end])
 
 
-    var nodeData = recognise.recogniseNodeData([pathToPosnList(RDPWaypoints)])
+    var nodeData = recognise.recogniseNodeDataSimple(
+      [pathToPosnList(RDPWaypoints)]
+    )
 
     var r: (Diagrams.Vertex | Diagrams.Edge)
 
