@@ -1,23 +1,49 @@
-import Diagrams = require("./freehand-diagrams.js");
+import Diagrams = require("./diagrams.js");
+import DiagramsIO = require("./diagrams-io.js");
 import $ = require("jquery");
 import SVG = require("svgjs");
-import FreehandOnSVGIOModule = require("./freehand-zx-draw-io.js")
-import ZXJSONIOModule = require("./freehand-zx-json-io.js")
-import ZXSVGIOModule = require("./freehand-zx-svg-io.js")
-import DiagramsJSONModule = require("./freehand-diagrams-json-io.js")
+import FreehandOnSVGIOModule = require("./zx-io-draw.js")
+import ZXJSONIOModule = require("./zx-io-json.js")
+import ZXSVGIOModule = require("./zx-io-svg.js")
+import DiagramsJSONModule = require("./diagrams-io-json.js")
+import ZXTikZIOModule = require("./zx-io-tikz.js")
 
 var D = new Diagrams.Diagram();
 $(document).ready();
 
-var freehandOnSVG = new FreehandOnSVGIOModule.FreehandOnSVGIOModule(D)
-var zxJSON = new ZXJSONIOModule.ZXJSONIOModule(D)
-var zxSVG = new ZXSVGIOModule.ZXSVGIOModule(D)
-var diagramsJSON = new DiagramsJSONModule.DiagramsJSONIOModule(D)
+var pipe = DiagramsIO.IOPipe
+var bindToD = function (IOModule: DiagramsIO.DiagramIOModule) {
+    new pipe(D, IOModule)
+    new pipe(IOModule.outputDiagram, D)
+}
+
+var freehandOnSVG = new FreehandOnSVGIOModule.FreehandOnSVGIOModule()
+bindToD(freehandOnSVG)
+var zxJSON = new ZXJSONIOModule.ZXJSONIOModule()
+bindToD(zxJSON)
+var zxSVG = new ZXSVGIOModule.ZXSVGIOModule()
+bindToD(zxSVG)
+var diagramsJSON = new DiagramsJSONModule.DiagramsJSONIOModule()
+bindToD(diagramsJSON)
+var zxTikZ = new ZXTikZIOModule.ZXTikZIOModule()
+bindToD(zxTikZ)
 
 $(document).ready(function () {
-    freehandOnSVG.createSVG('svgInputHolder')
-    zxJSON.UISelector = "#textZXJSONOutputHolder"
+    //zx-drawing
+    freehandOnSVG.createSVGHolder('svgInputHolder')
+    //zx-JSON
+    zxJSON.UISelector = "#ZXJSONIOModule > .main > #JSON"
+    $(zxJSON.UISelector).change(zxJSON.onJSONChange)
+    //zx-SVG
     zxSVG.SVG = SVG("svgOutputHolder")
-    zxSVG.toZXSVG()
-    diagramsJSON.UISelector = "#textDiagramsJSONOutputHolder"
+    //zx-TikZ
+    zxTikZ.UISelector = "#ZXTikZIOModule > .main > #JSON"
+    $(zxTikZ.UISelector).change(zxTikZ.onJSONChange)
+    //diagrams-JSON
+    diagramsJSON.UISelector = "#DiagramsJSONIOModule > .main > #JSON"
+    $(diagramsJSON.UISelector).change(diagramsJSON.onJSONChange)
+
+
+
+    D.fireChange()
 })

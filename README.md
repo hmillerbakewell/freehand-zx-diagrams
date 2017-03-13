@@ -1,2 +1,8 @@
 # FreehandDiagrams
-Turns freehand-drawn paths into connected, graph-like, smooth(er), computer-readable objects
+Turns freehand-drawn diagrams into their computer-readable counterparts.
+
+## Use
+Navigate to /docs/index.html to see a demonstration.
+
+## Theories
+Currently only supports diagrams for ZX-calculus.
