@@ -176,7 +176,7 @@ export function TikZtoZX(inputString: string) {
         let e = new Diagrams.Edge(startVertex, endVertex)
         let data: ZXIO.IEdgeData = {
             type: ZX.EDGETYPES.PLAIN,
-            RDPWaypoints:  [startVertex.pos, endVertex.pos],
+            RDPWaypoints: [startVertex.pos, endVertex.pos],
             path: ""
         }
         e.data = data

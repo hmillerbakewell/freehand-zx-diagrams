@@ -192,13 +192,14 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
       .replace(/[a-zA-Z]/g, '')
       .replace(/[\s,]+/g, ' ')
       .trim()
-    var interpolatedPath = pathInterpolate(pathAsString, 1)
+    var interpolatedPath =
+      pathInterpolate(pathAsString, ZXIO.defaultRadius / 10)
     var RDPWaypoints = RDP
-      .RamerDouglasPeucker(interpolatedPath.waypoints, 1)
+      .RamerDouglasPeucker(interpolatedPath.waypoints, ZXIO.defaultRadius / 10)
       .concat([interpolatedPath.end])
 
     var smootherRDP = RDP
-      .RamerDouglasPeucker(interpolatedPath.waypoints, 10)
+      .RamerDouglasPeucker(interpolatedPath.waypoints, ZXIO.defaultRadius)
       .concat([interpolatedPath.end])
 
 
@@ -285,7 +286,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
                 y: pos.y,
                 type: data.type,
                 label: "",
-                radius: 0.5
+                radius: radius
               },
               color: {
                 strokeData: "black",
@@ -299,10 +300,10 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
             var hadamardBox: SVGDrawableElement = {
               type: ENUMSVGDrawingType.RECT,
               dataRect: {
-                width: radius,
-                height: radius,
-                x: vertex.pos.x - radius / 2,
-                y: vertex.pos.y - radius / 2,
+                width: 2 * radius,
+                height: 2 * radius,
+                x: vertex.pos.x - radius,
+                y: vertex.pos.y - radius,
                 radius: radius,
                 type: ZX.VERTEXTYPES.HADAMARD,
                 label: ""
@@ -337,7 +338,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
               dataCircle: {
                 label: data.label,
                 type: data.type,
-                radius: (data.radius) | ZXIO.defaultRadius,
+                radius: radius,
                 cx: pos.x,
                 cy: pos.y
               },

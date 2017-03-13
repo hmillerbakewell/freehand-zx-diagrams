@@ -109,14 +109,15 @@ export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
 
   for (var vertex of diagram.vertices) {
     if (vertex.data) {
-      var vdata = <ZX.IVertexData>vertex.data
+      var vdata = <ZXIO.IVertexData>vertex.data
+      var radius = vdata.radius || ZXIO.defaultRadius
       switch (vdata.type) {
         case ZX.VERTEXTYPES.INPUT:
         case ZX.VERTEXTYPES.OUTPUT:
         case ZX.VERTEXTYPES.WIRE:
-          var r = svgContainer.rect(5, 5)
-          r.x(vertex.pos.x - 2.5)
-          r.y(vertex.pos.y - 2.5)
+          var r = svgContainer.rect(2 * radius, 2 * radius)
+          r.x(vertex.pos.x - radius)
+          r.y(vertex.pos.y - radius)
           r.fill(coloursDict[vdata.type])
             .data("type", (<ZX.IVertexData>vertex.data).type)
             .data("id", vertex.id)
@@ -126,7 +127,7 @@ export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
 
         case ZX.VERTEXTYPES.X:
         case ZX.VERTEXTYPES.Z:
-          var c = svgContainer.circle(10)
+          var c = svgContainer.circle(radius)
           c.cx(vertex.pos.x)
           c.cy(vertex.pos.y)
           c.fill(coloursDict[vdata.type])
@@ -137,9 +138,9 @@ export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
           idToElement[vertex.id] = vertex
           break;
         case ZX.VERTEXTYPES.HADAMARD:
-          var r = svgContainer.rect(10, 10)
-          r.x(vertex.pos.x - 5)
-          r.y(vertex.pos.y - 5)
+          var r = svgContainer.rect(2 * radius, 2 * radius)
+          r.x(vertex.pos.x - radius)
+          r.y(vertex.pos.y - radius)
           r.fill(coloursDict[vdata.type])
             .data("type", (<ZX.IVertexData>vertex.data).type)
             .data("id", vertex.id)
