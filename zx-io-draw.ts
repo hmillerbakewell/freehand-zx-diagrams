@@ -7,16 +7,23 @@ import ZX = require("./zx-theory.js")
 import ZXIO = require("./zx-io.js")
 import recognise = require("./zx-freehand-node.js")
 
-
+/** Types of object expected to be drawn. */
 enum ENUMSVGDrawingType { PATH, CIRCLE, RECT }
+
+/** Data needed for colouring an object. */
 interface ISVGColoured {
   strokeData?: SVG.StrokeData
   fillColor?: string
 }
+
+/** Vertex data that may have been inferred rather than explicitly given. */
 type IInferreableVertexData = ZXIO.IVertexData & ZXIO.IInferrable
 
+/** All of the allowed SVG data interfaces. */
 type ISVGAllowed =
   (ZXIO.ISVGCircle | ZXIO.ISVGPath | ZXIO.ISVGRect) & ISVGColoured
+
+/** An object ready to be drawn in SVG. */
 class SVGDrawableElement {
   type: ENUMSVGDrawingType
   dataRect?: ZXIO.IVertexData & ZXIO.ISVGRect
@@ -25,7 +32,7 @@ class SVGDrawableElement {
   color: ISVGColoured
 }
 
-
+/** IO module for freehand drawing ZX diagrams on an SVG element. */
 export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
   takeInput: boolean
   private currentPath: string
@@ -68,7 +75,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
 
   }
 
-
+  /** Create the SVG object in the given jquery place */
   createSVGHolder: (selector: string) => void = (selector: string) => {
     this.svgElement = SVG(selector)
     this.svgElement.viewbox({ x: 0, y: 0, width: 500, height: 500 });
@@ -106,6 +113,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
     this.outputDiagram = new Diagrams.Diagram()
   }
   outputDiagram: Diagrams.Diagram
+  /** Add a point to the currently drawing path. */
   addPoint: (x: number, y: number) => void = (x: number, y: number) => {
     this.lastTimeTriggered = (new Date()).getMilliseconds()
     if (this.takeInput) {
@@ -121,9 +129,11 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
       this.svgElement.path(this.currentPath).stroke("black").fill("transparent")
     }
   }
+  /** Begin the drawing of a path. */
   startPath: () => void = () => {
     this.currentPath = "";
   }
+  /** Complete the drawing of a path and attempt to process it. */
   endPath: () => void = () => {
     var s = this.currentPath;
     var svgPathWithData = <SVGDrawableElement>{
@@ -180,7 +190,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
     this.outputDiagram.importRewriteDiagram(packetDiagram)
   }
   /**
-   * Import Path as Object
+   * Interpret the given path as an object and add it to the diagram.
    * @param {string} pathAsString the path in SVGPath or similar format
    */
   importPathAsObject:
@@ -249,6 +259,8 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
     }
     return r
   }
+
+  /** Overwrite the internal diagram with new data. */
   importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
   = (diagram) => {
     if (diagram.toJSON() !== this.outputDiagram.toJSON()) {
@@ -359,8 +371,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
   }
 
   /**
-   * Draw All Shapes
-   * Takes every shape in this.paths[] and renders it as best it can
+   * Takes every shape in this.paths[] and renders it as best it can.
    */
   drawAllShapes = () => {
     var svg = this.svgElement;
@@ -495,12 +506,10 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
         swapEdgeVertex(this.diagMergedVertices, infVertex1, vx)
       }
     }
-
   }
-
-
 }
 
+/** Given positions as number[][] return {x,y}[] */
 function pathToPosnList(path: number[][]) {
   var posnList = []
   for (var i = 0; i < path.length; i++) {
@@ -509,7 +518,9 @@ function pathToPosnList(path: number[][]) {
   return posnList
 }
 
-
+/**
+ * Interpolate lambda of the way between a and b.
+ */
 function interpolate(lambda: number, a: number, b: number) {
   return ((1 - lambda) * a + lambda * b)
 }

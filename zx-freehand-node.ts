@@ -5,6 +5,12 @@ import ZXIO = require("./zx-io.js")
 
 type ICoord = ZXIO.ICoord
 
+/**
+ * Given a collection of paths make a best guess as what the
+ * user was trying to draw in terms of node data.
+ * Returns a wire node if it thought the path was a wire.
+ * @param waypointLists List of lists of {x,y} coordinates.
+ */
 export function recogniseNodeDataSimple(
     waypointLists: ZXIO.ICoord[][]
 ) {
@@ -207,6 +213,7 @@ export function recogniseNodeDataSimple(
     return data
 }
 
+/** Defunct function, kept for cannibalisation */
 export function recogniseNodeDataComplex(
     waypointLists: ZXIO.ICoord[][]
 ) {

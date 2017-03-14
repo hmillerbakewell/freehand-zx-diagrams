@@ -22,23 +22,32 @@ import ZXIO = require("./zx-io.js")
 
     */
 
+/** Data needed for TikZ nodes */
 interface ITikZNode {
     style: NODESTYLES,
     reference: string,
     position: ZXIO.ICoord,
     label: string
 }
+
+/** Data needed for TikZ edges */
 interface ITikZEdge {
     style: EDGESTYLES,
     start: string,
     end: string
 }
 
+/** Allowed styles of node */
 enum NODESTYLES { GREENNODE, REDNODE, INPUTOUTPUT, WIRE, HADAMARD, BOX, NONE }
+
+/** Allowed styles of edge */
 enum EDGESTYLES { PLAIN }
 
+/** Given an EDGESTYLES give the TikZ version */
 var edgeStyleLookup: { [id: number]: string } = {}
 edgeStyleLookup[EDGESTYLES.PLAIN] = "-"
+
+/** Given a VERTEXSTYLES give the TikZ version  */
 var nodeStyleLookup: { [id: number]: string } = {}
 nodeStyleLookup[NODESTYLES.GREENNODE] = "gn"
 nodeStyleLookup[NODESTYLES.REDNODE] = "rn"
@@ -48,6 +57,7 @@ nodeStyleLookup[NODESTYLES.HADAMARD] = "H"
 nodeStyleLookup[NODESTYLES.BOX] = "block"
 nodeStyleLookup[NODESTYLES.NONE] = "none"
 
+/** Given the TikZ style give the NODESTYLES version */
 var styleNodeLookup: { [id: string]: NODESTYLES } = {}
 styleNodeLookup["plain"] = NODESTYLES.NONE
 styleNodeLookup["H"] = NODESTYLES.HADAMARD
@@ -56,6 +66,10 @@ styleNodeLookup["block"] = NODESTYLES.NONE
 styleNodeLookup["gn"] = NODESTYLES.GREENNODE
 styleNodeLookup["rn"] = NODESTYLES.REDNODE
 
+/**
+ * Render the given diagram into TikZ code
+ * @param diagram Diagram to render
+ */
 export function ZXToTikZ(diagram: Diagrams.IDiagramOutput) {
     var s = ""
     let nodeList: ITikZNode[] = []
@@ -122,6 +136,7 @@ export function ZXToTikZ(diagram: Diagrams.IDiagramOutput) {
     return s
 }
 
+/** Import from the given TikZ code into a diagram */
 export function TikZtoZX(inputString: string) {
     let d = new Diagrams.Diagram()
     // Gather all the nodes:
@@ -186,7 +201,7 @@ export function TikZtoZX(inputString: string) {
     return d
 }
 
-
+/** IO module that exposes the TikZ code */
 export class ZXTikZIOModule extends ZXIO.HTMLModule {
     constructor() {
         super()

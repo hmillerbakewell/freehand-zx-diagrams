@@ -25,10 +25,13 @@ vertexQuantoLabels["Z"] = ZX.VERTEXTYPES.Z
 let quantoEdgeLabels: { [id: number]: string } = {}
 quantoEdgeLabels[ZX.EDGETYPES.PLAIN] = ""
 
+/** Edges as specified by Quantomatic */
 export interface IQuantoEdge {
     src: string
     tgt: string
 }
+
+/** Nodes as specified by Quantomatic */
 export interface IQuantoNodeVertex {
     data: {
         type: string,
@@ -39,6 +42,8 @@ export interface IQuantoNodeVertex {
         coord: [number, number]
     }
 }
+
+/** Wires as specified by Quantomatic */
 export interface IQuantoWireVertex {
     annotation: {
         boundary: boolean,
@@ -46,24 +51,30 @@ export interface IQuantoWireVertex {
     }
 }
 
-export interface IQuantoIO {
+/** Diagrams as specified by Quantomatic */
+export interface IQuantoDiagram {
     wire_vertices: { [index: string]: IQuantoWireVertex }
     node_vertices: { [index: string]: IQuantoNodeVertex }
     undir_edges: { [index: string]: IQuantoEdge }
 }
 
+/** IO module that interprets Quantomatic's JSON */
 export class ZXJSONIOModule extends ZXIO.HTMLModule {
     constructor() {
         super()
     }
+
+    /** Rewrite the internal diagram data */
     importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
     = (diagram) => {
         $(this.UISelector).html(
             JSON.stringify(
-                JSON.parse(this.toSimpleZXGraph(diagram))
+                JSON.parse(diagramToQuantoGraph(diagram))
                 , undefined, 2)
         )
     }
+
+    /** Fires when the JSON has been changed */
     onJSONChange: () => void = () => {
         var parsed: any
         try {
@@ -130,68 +141,72 @@ export class ZXJSONIOModule extends ZXIO.HTMLModule {
             this.outputDiagram.importRewriteDiagram(packetDiagram)
         }
     }
-    toSimpleZXGraph(diagram: Diagrams.IDiagramOutput) {
-        var output = <IQuantoIO>{
-            node_vertices: {},
-            undir_edges: {},
-            wire_vertices: {}
-        }
-        // Loop through vertices, act according to the existing vertex.type data
-        for (var vertex of diagram.vertices) {
-            if (vertex.data) {
-                switch (vertex.data.type) {
-                    case ZX.VERTEXTYPES.WIRE:
-                        output.wire_vertices[vertex.id] = <IQuantoWireVertex>{
-                            "annotation": {
-                                "boundary": false,
-                                "coord": [vertex.pos.x, vertex.pos.y]
-                            }
-                        }
-                        break;
-                    case ZX.VERTEXTYPES.INPUT:
-                    case ZX.VERTEXTYPES.OUTPUT:
-                        output.wire_vertices[vertex.id] = {
-                            "annotation": {
-                                "boundary": true,
-                                "coord": [vertex.pos.x, vertex.pos.y]
-                            }
-                        }
-                        break;
 
-                    case ZX.VERTEXTYPES.X:
-                    case ZX.VERTEXTYPES.Z:
-                    case ZX.VERTEXTYPES.HADAMARD:
-                        output.node_vertices[vertex.id] = {
-                            "data": {
-                                "type": quantoVertexLabels[vertex.data.type],
-                                "value": (vertex.data.label || "")
-                            },
-                            "annotation": {
-                                "boundary": false,
-                                "coord": [vertex.pos.x, vertex.pos.y]
-                            }
-                        }
-                        break;
 
-                }
-            } else {
-                output.wire_vertices[vertex.id] = {
-                    "annotation": {
-                        "boundary": false,
-                        "coord": [vertex.pos.x, vertex.pos.y]
-                    }
-                }
-                break;
-            }
-        }
+}
 
-        // Then edges
-        for (var edge of diagram.edges) {
-            output.undir_edges[edge.id] = {
-                src: edge.start,
-                tgt: edge.end
-            }
-        }
-        return JSON.stringify(output)
+/** Converts a given diagram to Quantomatic-understandable JSON */
+let diagramToQuantoGraph = function (diagram: Diagrams.IDiagramOutput) {
+    var output = <IQuantoDiagram>{
+        node_vertices: {},
+        undir_edges: {},
+        wire_vertices: {}
     }
+    // Loop through vertices, act according to the existing vertex.type data
+    for (var vertex of diagram.vertices) {
+        if (vertex.data) {
+            switch (vertex.data.type) {
+                case ZX.VERTEXTYPES.WIRE:
+                    output.wire_vertices[vertex.id] = <IQuantoWireVertex>{
+                        "annotation": {
+                            "boundary": false,
+                            "coord": [vertex.pos.x, vertex.pos.y]
+                        }
+                    }
+                    break;
+                case ZX.VERTEXTYPES.INPUT:
+                case ZX.VERTEXTYPES.OUTPUT:
+                    output.wire_vertices[vertex.id] = {
+                        "annotation": {
+                            "boundary": true,
+                            "coord": [vertex.pos.x, vertex.pos.y]
+                        }
+                    }
+                    break;
+
+                case ZX.VERTEXTYPES.X:
+                case ZX.VERTEXTYPES.Z:
+                case ZX.VERTEXTYPES.HADAMARD:
+                    output.node_vertices[vertex.id] = {
+                        "data": {
+                            "type": quantoVertexLabels[vertex.data.type],
+                            "value": (vertex.data.label || "")
+                        },
+                        "annotation": {
+                            "boundary": false,
+                            "coord": [vertex.pos.x, vertex.pos.y]
+                        }
+                    }
+                    break;
+
+            }
+        } else {
+            output.wire_vertices[vertex.id] = {
+                "annotation": {
+                    "boundary": false,
+                    "coord": [vertex.pos.x, vertex.pos.y]
+                }
+            }
+            break;
+        }
+    }
+
+    // Then edges
+    for (var edge of diagram.edges) {
+        output.undir_edges[edge.id] = {
+            src: edge.start,
+            tgt: edge.end
+        }
+    }
+    return JSON.stringify(output)
 }

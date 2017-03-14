@@ -6,11 +6,14 @@ import $ = require("jquery")
 import ZX = require("./zx-theory")
 import ZXIO = require("./zx-io")
 
+/** IO module for SVG rendering of a diagram */
 export class ZXSVGIOModule extends ZXIO.HTMLModule {
   constructor() {
     super()
     this.internalDiagram = new Diagrams.Diagram()
   }
+
+  /** Overwrite internal data with new diagram */
   importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
   = (diagram) => {
     this.internalDiagram.importRewriteDiagram(diagram)
@@ -18,6 +21,8 @@ export class ZXSVGIOModule extends ZXIO.HTMLModule {
     this.outputDiagram.importRewriteDiagram(this.internalDiagram)
   }
   private internalDiagram: Diagrams.Diagram
+
+  /** Fires when an element is clickes */
   clickedElement: (e: MouseEvent) => void = (e) => {
     e.preventDefault()
     if ((<any>e.srcElement).dataset) {
@@ -52,6 +57,8 @@ export class ZXSVGIOModule extends ZXIO.HTMLModule {
     }
   }
   SVG: SVG.Container
+
+  /** Renders the given diagram */
   toZXSVG: (diagram: Diagrams.IDiagramOutput) => void
   = (diagram) => {
     ZXToSVG(
@@ -61,7 +68,12 @@ export class ZXSVGIOModule extends ZXIO.HTMLModule {
   }
 }
 
-
+/**
+ * Render to the given diagram into SVG
+ * @param diagram Diagram to render
+ * @param svgContainer SVG element on which to render
+ * @param clickHandler Event handler for clicking on an object
+ */
 export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
   svgContainer: SVG.Container,
   clickHandler: (e: MouseEvent) => void) {
