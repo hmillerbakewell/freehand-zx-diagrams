@@ -108,6 +108,7 @@ export function recogniseNodeDataSimple(
     // then it is a node
     if (distanceAB(start, end) < shortGapSize) {
         data.type = ZX.VERTEXTYPES.Z
+        data.radius = Math.min(bboxWidth, bboxHeight) / 2
         return data
     }
 
@@ -157,7 +158,7 @@ export function recogniseNodeDataSimple(
     var circOfPerfectCircle = Math.PI * minDistanceFromMid
     var areaOfPerfectCirle = Math.PI * Math.pow(diameter / 2, 2)
     var areaOfPerfectRect = bboxWidth * bboxHeight
-    var circOfNearLine = 2 * diagonal
+    var perimOfNearLine = 2 * diagonal
 
     var maxDistanceFromMid = distancesFromMid.reduce(function (a, b) {
         return Math.max(a, b)
