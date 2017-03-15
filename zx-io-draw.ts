@@ -392,7 +392,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
           break;
         case ENUMSVGDrawingType.CIRCLE:
           var dataCirc = (shape.dataCircle)
-          svgElementCreated = svg.circle(dataCirc.radius)
+          svgElementCreated = svg.circle(dataCirc.radius * 2)
           svgElementCreated.cx(dataCirc.cx)
           svgElementCreated.cy(dataCirc.cy)
           break;
