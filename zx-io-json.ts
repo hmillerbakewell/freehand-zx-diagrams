@@ -67,7 +67,7 @@ export class ZXJSONIOModule extends ZXIO.HTMLModule {
     /** Rewrite the internal diagram data */
     importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
     = (diagram) => {
-        $(this.UISelector).html(
+        $(this.UISelector).val(
             JSON.stringify(
                 JSON.parse(diagramToQuantoGraph(diagram))
                 , undefined, 2)

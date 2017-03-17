@@ -208,7 +208,7 @@ export class ZXTikZIOModule extends ZXIO.HTMLModule {
     }
     importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
     = (diagram) => {
-        $(this.UISelector).html(
+        $(this.UISelector).val(
             ZXToTikZ(diagram)
         )
     }
