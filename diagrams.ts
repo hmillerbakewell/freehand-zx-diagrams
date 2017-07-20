@@ -1,17 +1,10 @@
-import shortid = require("shortid")
-
-
-shortid.characters(
-  '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£'
-)
-
 /**
  * Class that contains an unique ID.
  */
 export abstract class uID {
   id: string
   constructor() {
-    this.id = shortid.generate()
+    this.id = Math.random().toString(36).substring(2,6)
     //idLookup[this.id] = this
   }
 }
