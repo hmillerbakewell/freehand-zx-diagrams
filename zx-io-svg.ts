@@ -1,16 +1,19 @@
 import Diagrams = require("./diagrams")
 import SVG = require("svgjs")
-import pathInterpolate = require("path-interpolate")
+import pathInterpolate = require("./path-interpolate")
 import waypointsToSmoothPath = require("./waypoints-to-smooth-path")
 import $ = require("jquery")
 import ZX = require("./zx-theory")
 import ZXIO = require("./zx-io")
 
+/** IO module for SVG rendering of a diagram */
 export class ZXSVGIOModule extends ZXIO.HTMLModule {
   constructor() {
     super()
     this.internalDiagram = new Diagrams.Diagram()
   }
+
+  /** Overwrite internal data with new diagram */
   importRewriteDiagram: (diagram: Diagrams.IDiagramOutput) => void
   = (diagram) => {
     this.internalDiagram.importRewriteDiagram(diagram)
@@ -18,6 +21,8 @@ export class ZXSVGIOModule extends ZXIO.HTMLModule {
     this.outputDiagram.importRewriteDiagram(this.internalDiagram)
   }
   private internalDiagram: Diagrams.Diagram
+
+  /** Fires when an element is clickes */
   clickedElement: (e: MouseEvent) => void = (e) => {
     e.preventDefault()
     if ((<any>e.srcElement).dataset) {
@@ -52,6 +57,8 @@ export class ZXSVGIOModule extends ZXIO.HTMLModule {
     }
   }
   SVG: SVG.Container
+
+  /** Renders the given diagram */
   toZXSVG: (diagram: Diagrams.IDiagramOutput) => void
   = (diagram) => {
     ZXToSVG(
@@ -61,7 +68,12 @@ export class ZXSVGIOModule extends ZXIO.HTMLModule {
   }
 }
 
-
+/**
+ * Render to the given diagram into SVG
+ * @param diagram Diagram to render
+ * @param svgContainer SVG element on which to render
+ * @param clickHandler Event handler for clicking on an object
+ */
 export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
   svgContainer: SVG.Container,
   clickHandler: (e: MouseEvent) => void) {
@@ -110,14 +122,14 @@ export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
   for (var vertex of diagram.vertices) {
     if (vertex.data) {
       var vdata = <ZXIO.IVertexData>vertex.data
-      var radius = vdata.radius || ZXIO.defaultRadius
+      var radius = ZXIO.defaultRadius
       switch (vdata.type) {
         case ZX.VERTEXTYPES.INPUT:
         case ZX.VERTEXTYPES.OUTPUT:
         case ZX.VERTEXTYPES.WIRE:
-          var r = svgContainer.rect(2 * radius, 2 * radius)
-          r.x(vertex.pos.x - radius)
-          r.y(vertex.pos.y - radius)
+          var r = svgContainer.rect(radius, radius) // HALF SIZE!
+          r.x(vertex.pos.x - radius / 2)
+          r.y(vertex.pos.y - radius / 2)
           r.fill(coloursDict[vdata.type])
             .data("type", (<ZX.IVertexData>vertex.data).type)
             .data("id", vertex.id)
@@ -127,7 +139,7 @@ export function ZXToSVG(diagram: Diagrams.IDiagramOutput,
 
         case ZX.VERTEXTYPES.X:
         case ZX.VERTEXTYPES.Z:
-          var c = svgContainer.circle(radius)
+          var c = svgContainer.circle(2 * radius)
           c.cx(vertex.pos.x)
           c.cy(vertex.pos.y)
           c.fill(coloursDict[vdata.type])

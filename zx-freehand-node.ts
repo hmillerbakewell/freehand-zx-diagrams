@@ -5,6 +5,12 @@ import ZXIO = require("./zx-io.js")
 
 type ICoord = ZXIO.ICoord
 
+/**
+ * Given a collection of paths make a best guess as what the
+ * user was trying to draw in terms of node data.
+ * Returns a wire node if it thought the path was a wire.
+ * @param waypointLists List of lists of {x,y} coordinates.
+ */
 export function recogniseNodeDataSimple(
     waypointLists: ZXIO.ICoord[][]
 ) {
@@ -102,6 +108,7 @@ export function recogniseNodeDataSimple(
     // then it is a node
     if (distanceAB(start, end) < shortGapSize) {
         data.type = ZX.VERTEXTYPES.Z
+        data.radius = Math.min(bboxWidth, bboxHeight) / 2
         return data
     }
 
@@ -151,7 +158,7 @@ export function recogniseNodeDataSimple(
     var circOfPerfectCircle = Math.PI * minDistanceFromMid
     var areaOfPerfectCirle = Math.PI * Math.pow(diameter / 2, 2)
     var areaOfPerfectRect = bboxWidth * bboxHeight
-    var circOfNearLine = 2 * diagonal
+    var perimOfNearLine = 2 * diagonal
 
     var maxDistanceFromMid = distancesFromMid.reduce(function (a, b) {
         return Math.max(a, b)
@@ -207,6 +214,7 @@ export function recogniseNodeDataSimple(
     return data
 }
 
+/** Defunct function, kept for cannibalisation */
 export function recogniseNodeDataComplex(
     waypointLists: ZXIO.ICoord[][]
 ) {

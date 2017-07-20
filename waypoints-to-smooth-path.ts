@@ -3,6 +3,12 @@ export interface ICoords {
     y: number
 }
 
+/**
+ * Returns a smooth SVG path from start to end via all the waypoints
+ * @param start {x,y} point
+ * @param waypointsInBetween List of {x,y} points
+ * @param end {x,y} point
+ */
 export function smoothWithTips(start: ICoords,
     waypointsInBetween: ICoords[],
     end: ICoords
@@ -10,6 +16,10 @@ export function smoothWithTips(start: ICoords,
     return smooth([start].concat(waypointsInBetween).concat([end]))
 }
 
+/** Given a set of {x,y} waypoints returns the SVG necessary for
+ * drawing a smooth line between them
+ *  @param allWapoints List of {x,y} waypoints
+ */
 export function smooth(allWaypoints: ICoords[]) {
     let smoothingFactor = 0.3
     if (allWaypoints.length == 0) {

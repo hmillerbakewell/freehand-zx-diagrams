@@ -2,6 +2,7 @@ import Diagrams = require("./diagrams.js")
 import $ = require("jquery")
 import IO = require("./diagrams-io")
 
+/** HTML IO module that expresses the JSON of the underlying diagram. */
 export class DiagramsJSONIOModule extends IO.DiagramIOHTMLModule {
     constructor() {
         super()

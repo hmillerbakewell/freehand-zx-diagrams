@@ -1,19 +1,17 @@
-import shortid = require("shortid")
-
-
-shortid.characters(
-  '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_£'
-)
+/**
+ * Class that contains an unique ID.
+ */
 export abstract class uID {
   id: string
   constructor() {
-    this.id = shortid.generate()
+    this.id = Math.random().toString(36).substring(2,6)
     //idLookup[this.id] = this
   }
 }
 
-//export var idLookup: { [id: string]: any } = []
-
+/**
+ * Class that has a .type and a unique ID.
+ */
 export abstract class TypedId extends uID {
   protected _type: string
   constructor() {
@@ -26,17 +24,30 @@ export abstract class TypedId extends uID {
   }
 }
 
+/**
+ * Coordinates that every diagram element uses.
+ */
 export interface IDiagramPosition {
   x: number
   y: number
 }
 
+/**
+ * Euclidean distance squared.
+ * @param a 
+ * @param b 
+ */
 export function posnDistanceSquared(a: IDiagramPosition, b: IDiagramPosition) {
   var dx = a.x - b.x
   var dy = a.y - b.y
   return dx * dx + dy * dy
 }
 
+/**
+ * A vertex in a diagram.
+ * Created using a position.
+ * All data is accessible.
+ */
 export class Vertex extends TypedId {
   pos: IDiagramPosition
   data: any
@@ -48,6 +59,11 @@ export class Vertex extends TypedId {
   }
 }
 
+/**
+ * An edge in a diagram.
+ * Specified using start and end vertices.
+ * This is to ensure these vertices exist.
+ */
 export class Edge extends TypedId {
   start: string
   end: string
@@ -61,10 +77,15 @@ export class Edge extends TypedId {
   }
 }
 
-
+/**
+ * Anything that accepts diagram data.
+ */
 export interface IDiagramInput {
   importRewriteDiagram: (diagram: IDiagramOutput) => void
 }
+/**
+ * Anything that presents diagram data.
+ */
 export interface IDiagramOutput {
   edges: Edge[]
   edgeById: { [index: string]: Edge }
@@ -72,9 +93,15 @@ export interface IDiagramOutput {
   vertexById: { [index: string]: Vertex }
   toJSON: () => string
 }
+/**
+ * Something that can push diagram changes downstream.
+ */
 export interface IStreamCaller {
   subscribe: (handler: IStreamListener) => void
 }
+/**
+ * Something that listens for upstream diagram changes.
+ */
 export interface IStreamListener {
   upstreamChange: (diagram: IDiagramOutput) => void
 }
@@ -89,17 +116,19 @@ export class Diagram
   // Event handling
 
   private listeners: (IStreamListener)[] = []
+  /** Add a listener to this object's changes. */
   subscribe: (handler: IStreamListener) => void = (handler) => {
     this.listeners.push(handler)
   }
+  /** Notify all downstream listeners. */
   fireChange: () => void = () => {
-    this.redoJSON()
     for (var l of this.listeners) {
       l.upstreamChange(this)
     }
   }
 
   // Importing
+  /** Add a single edge */
   importEdge: (edge: Edge) => void = (edge: Edge) => {
     this.importEdgeDontFire(edge)
     this.fireChange()
@@ -108,6 +137,7 @@ export class Diagram
     this.edges.push(edge)
     this.edgeById[edge.id] = edge
   }
+  /** Add a single vertex */
   importVertex: (vertex: Vertex) => void = (vertex: Vertex) => {
     this.importVertexDontFire(vertex)
     this.fireChange()
@@ -117,6 +147,7 @@ export class Diagram
     this.vertices.push(vertex)
     this.vertexById[vertex.id] = vertex
   }
+  /** Rewrite the existing diagram data with new data */
   importRewriteDiagram: (diagram: IDiagramOutput) => void
   = (diagram: IDiagramOutput) => {
     var previousToJSON = this.toJSON()
@@ -146,7 +177,6 @@ export class Diagram
       e.data = edge.data
       this.importEdgeDontFire(e)
     }
-    this.redoJSON()
     if (this.toJSON() !== previousToJSON) {
       this.fireChange()
     }
@@ -156,18 +186,13 @@ export class Diagram
   edgeById: { [index: string]: Edge } = {}
   vertexById: { [index: string]: Vertex } = {}
 
-  private _toJSON: string; // Caching no longer used
-  private redoJSON: () => string = () => {
-
+  /** Create JSON bare bones data of this diagram*/
+  toJSON: () => string = () => {
     var dummyDiagram = {
       edges: this.edges,
       vertices: this.vertices
     }
     var newJSON = JSON.stringify(dummyDiagram, undefined, 2)
-    this._toJSON = newJSON
-    return this._toJSON
-  }
-  toJSON: () => string = () => {
-    return this.redoJSON()
+    return newJSON
   }
 }
