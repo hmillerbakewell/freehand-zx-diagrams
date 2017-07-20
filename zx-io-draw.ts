@@ -1,6 +1,6 @@
 import Diagrams = require("./diagrams.js")
 import SVG = require("svgjs")
-import pathInterpolate = require("path-interpolate")
+import pathInterpolate = require("./path-interpolate")
 import waypointsToSmoothPath = require("./waypoints-to-smooth-path.js")
 import RDP = require("./RamerDouglasPeucker.js")
 import ZX = require("./zx-theory.js")
@@ -301,7 +301,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
                 radius: radius
               },
               color: {
-                strokeData: "black",
+                strokeData: {color: "black"},
                 fillColor: "black"
               }
 
@@ -321,7 +321,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
                 label: ""
               },
               color: {
-                strokeData: "black",
+                strokeData: {color: "black"},
                 fillColor: "white"
               }
             }
@@ -338,7 +338,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
                 cy: pos.y
               },
               color: {
-                strokeData: "black",
+                strokeData: {color: "black"},
                 fillColor: "white"
               }
             }
@@ -355,7 +355,7 @@ export class FreehandOnSVGIOModule extends ZXIO.HTMLModule {
                 cy: pos.y
               },
               color: {
-                strokeData: "black",
+                strokeData: {color: "black"},
                 fillColor: "black"
               }
             }

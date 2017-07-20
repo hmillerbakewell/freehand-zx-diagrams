@@ -1,6 +1,6 @@
 import Diagrams = require("./diagrams")
 import SVG = require("svgjs")
-import pathInterpolate = require("path-interpolate")
+import pathInterpolate = require("./path-interpolate")
 import waypointsToSmoothPath = require("./waypoints-to-smooth-path")
 import $ = require("jquery")
 import ZX = require("./zx-theory")

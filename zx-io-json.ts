@@ -1,6 +1,6 @@
 import Diagrams = require("./diagrams.js")
 import SVG = require("svgjs")
-import pathInterpolate = require("path-interpolate")
+import pathInterpolate = require("./path-interpolate")
 import $ = require("jquery")
 import ZX = require("./zx-theory.js")
 import ZXIO = require("./zx-io.js")
